@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agrovision"
+version = "2.0.0"
+description = "Classificacao de folhas de tomateiro e painel analitico para o agronegocio"
+requires-python = ">=3.10"
+dependencies = [
+    "streamlit>=1.35,<2",
+    "pandas>=2,<3",
+    "numpy>=1.24,<3",
+    "opencv-python-headless>=4.8,<5",
+    "scikit-learn>=1.3,<2",
+    "joblib>=1.3,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<9",
+    "ruff>=0.6,<1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

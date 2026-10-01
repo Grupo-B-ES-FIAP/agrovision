@@ -8,9 +8,13 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 
 
-# Caminhos das imagens
-PASTA_SAUDAVEL = "dataset/saudavel"
-PASTA_DOENTE = "dataset/doente"
+from pathlib import Path
+
+# Caminhos das imagens, relativos a raiz do repositorio
+RAIZ = Path(__file__).resolve().parents[1]
+PASTA_SAUDAVEL = RAIZ / "data" / "dataset" / "saudavel"
+PASTA_DOENTE = RAIZ / "data" / "dataset" / "doente"
+MODELO = RAIZ / "models" / "modelo_folhas.pkl"
 
 
 def extrair_caracteristicas(caminho_imagem):
@@ -19,7 +23,7 @@ def extrair_caracteristicas(caminho_imagem):
     em números que o modelo consegue utilizar.
     """
 
-    imagem = cv2.imread(caminho_imagem)
+    imagem = cv2.imread(str(caminho_imagem))
 
     if imagem is None:
         return None
@@ -132,6 +136,6 @@ print(
 
 
 # Salvar modelo
-joblib.dump(modelo, "modelo_folhas.pkl")
+joblib.dump(modelo, MODELO)
 
 print("\nModelo salvo como: modelo_folhas.pkl")
