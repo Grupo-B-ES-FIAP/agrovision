@@ -1,0 +1,13 @@
+Esse é o AgroVision, na Fase 2. Eu sou o Alvaro, e desenvolvi com o Christian, o Filipe e a Isabela. Na Fase 1 o sistema classificava uma folha de tomateiro como saudável ou doente. Agora, ele organiza essas classificações em uma base de dados e mostra em um painel onde está o problema na lavoura.
+
+O dado nasce aqui. O agricultor escolhe o talhão e a data da coleta, e envia as fotos. O modelo classifica cada folha e mostra a confiança da previsão. Repare que o local e a data entram junto com o resultado. É isso que depois permite responder onde e quando o problema apareceu.
+
+No painel, os quatro indicadores do topo dão a leitura geral. São mil e oitenta imagens analisadas em trinta dias. Dessas, oitenta vírgula seis por cento são folhas saudáveis. A confiança média do modelo é de noventa e um vírgula oito por cento. Esse último número importa. Ele diz o quanto dá para confiar no resto do painel.
+
+Essa quebra por talhão é a primeira decisão prática. O Talhão A tem seis por cento de folhas doentes. O Talhão C tem dezesseis. O Talhão B tem trinta e cinco. A média da fazenda esconderia isso. Com o painel, o produtor vê que o problema está concentrado em um talhão, e aplica defensivo só ali. Isso economiza produto, economiza hora de máquina e reduz o resíduo no restante da lavoura.
+
+A segunda decisão é de tempo. Filtrei só o Talhão B. A linha vermelha mostra o foco de praga crescendo a partir do dia onze. O pico é no dia dezenove. Depois da aplicação de defensivo, ela cai e volta ao normal no fim do mês. Uma linha subindo assim é um alerta antes da perda acontecer. O produtor não precisa esperar a lavoura mostrar dano para agir.
+
+Tudo isso vem de um pipeline de três camadas. A Bronze guarda cada classificação como ela saiu do modelo. A Silver valida os tipos e remove registro inválido e repetido, e é a camada que alimenta o painel. A Gold guarda os indicadores prontos. Cada análise nova roda esse fluxo automaticamente. E os resultados saem em CSV ou JSON, para abrir no Excel ou alimentar outro sistema.
+
+O projeto também tem o mesmo pipeline escrito em Apache Spark, para rodar no Databricks quando o volume crescer. Continua sendo um protótipo. Uma cultura, uma doença, e sensível à qualidade da foto. Mas já mostra o que o AgroSmart propõe. Usar o dado do campo para decidir onde agir, em vez de agir em tudo por precaução. Valeu.
