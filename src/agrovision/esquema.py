@@ -30,6 +30,11 @@ CHAVE_DEDUPLICACAO = [NOME_IMAGEM, DATA, LOCALIDADE]
 
 OBRIGATORIAS = [NOME_IMAGEM, CATEGORIA, ACURACIA, DATA, LOCALIDADE]
 
+# Verde para folha sadia, vermelho para folha doente. Com os dois tons de azul
+# que a biblioteca de graficos usa por padrao, o leitor precisa conferir a
+# legenda a cada grafico para saber qual serie e qual.
+CORES = {SAUDAVEL: "#2E9E5B", DOENTE: "#D64545"}
+
 ORIGEM_MODELO = "Modelo"
 ORIGEM_LOTE = "Modelo (lote)"
 ORIGEM_SIMULADO = "Simulado"

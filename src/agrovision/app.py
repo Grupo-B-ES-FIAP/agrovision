@@ -17,6 +17,7 @@ from agrovision.esquema import (
     CATEGORIA,
     CATEGORIAS_VALIDAS,
     CODIFICACAO,
+    CORES,
     DATA,
     DOENTE,
     FORMATO_DATA,
@@ -34,6 +35,9 @@ from agrovision.vision import de_bytes
 
 RAIZ = Path(__file__).resolve().parents[2]
 DEMO = RAIZ / "data" / "exemplos" / "analises_demo.csv"
+
+# Ordem igual a de CATEGORIAS_VALIDAS, que e a ordem das colunas nos graficos.
+PALETA = [CORES[categoria] for categoria in CATEGORIAS_VALIDAS]
 
 st.set_page_config(page_title="AgroVision | Fase 2", page_icon="🌱", layout="wide")
 
@@ -227,13 +231,23 @@ with aba_painel:
 
             with esquerda:
                 st.subheader("Distribuicao das classificacoes")
-                st.bar_chart(
-                    df[CATEGORIA].value_counts().reindex(CATEGORIAS_VALIDAS, fill_value=0)
+                # Uma linha com as duas categorias em colunas, para cada barra
+                # receber a sua cor. O indice vira o rotulo do eixo.
+                contagem = (
+                    df[CATEGORIA]
+                    .value_counts()
+                    .reindex(CATEGORIAS_VALIDAS, fill_value=0)
+                    .to_frame()
+                    .T.rename(index={"count": "Imagens analisadas"})
                 )
+                st.bar_chart(contagem, color=PALETA, stack=False)
 
             with direita:
                 st.subheader("Analises por localidade")
-                st.bar_chart(pd.crosstab(df[LOCALIDADE], df[CATEGORIA]))
+                por_local = pd.crosstab(df[LOCALIDADE], df[CATEGORIA]).reindex(
+                    columns=CATEGORIAS_VALIDAS, fill_value=0
+                )
+                st.bar_chart(por_local, color=PALETA)
 
             st.subheader("Evolucao por dia")
             st.caption(
@@ -246,7 +260,7 @@ with aba_painel:
                 .unstack(fill_value=0)
                 .reindex(columns=CATEGORIAS_VALIDAS, fill_value=0)
             )
-            st.line_chart(diario)
+            st.line_chart(diario, color=PALETA)
 
             st.subheader("Historico filtrado")
             exibicao = df.copy()

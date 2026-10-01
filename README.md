@@ -1,108 +1,180 @@
-# 🌱 AgroVision
+# AgroVision
 
-Sistema de reconhecimento de imagens para classificar folhas de tomateiro como **Saudável** ou **Doente**, com dashboard interativo, integração com base de dados (pipeline ETL) e exportação dos resultados em CSV/JSON.
+[![CI](https://github.com/Grupo-B-ES-FIAP/agrovision/actions/workflows/ci.yml/badge.svg)](https://github.com/Grupo-B-ES-FIAP/agrovision/actions/workflows/ci.yml)
 
-Projeto AgroSmart, **Fase 2**: organização, integração e visualização dos dados.
+Classificação de folhas de tomateiro por visão computacional, com painel
+analítico e pipeline de dados.
 
-## Tecnologias utilizadas
+O produtor fotografa folhas no campo. O AgroVision diz quais estão saudáveis e
+quais apresentam sinais de doença. Cada análise fica guardada com data e
+talhão. O painel mostra onde o problema está crescendo. Com isso, a aplicação
+de defensivo vai para o talhão que precisa, e não para a fazenda inteira.
 
-- Python
-- Streamlit
-- OpenCV
-- Scikit-learn
-- Pandas
+Projeto acadêmico AgroSmart, FIAP. Duas sprints: visão computacional na Fase 1,
+organização e visualização dos dados na Fase 2.
 
-## Como executar
+![Painel do AgroVision](docs/img/painel.jpg)
 
-Pré-requisito: Python 3.10 ou superior instalado.
+## O que o sistema faz
+
+| Aba | Função |
+|---|---|
+| Análise de folhas | Recebe uma ou mais imagens, com o local e a data da coleta. Classifica cada folha como saudável ou doente, com o percentual de confiança |
+| Painel | Imagens analisadas, percentual de saudáveis e doentes, confiança média, contagem por talhão e evolução por dia. Filtros de período, local e classificação |
+| Pipeline de dados | Mostra as três camadas de dados, permite reprocessar e exportar os resultados em CSV e JSON |
+
+## Como rodar
+
+Pré-requisito: Python 3.10 ou superior.
 
 ### Windows (PowerShell)
 
 ```powershell
-py -3 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m streamlit run app.py
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m streamlit run src/agrovision/app.py
 ```
 
-### Linux / macOS
+### Linux e macOS
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-streamlit run app.py
+pip install -e ".[dev]"
+streamlit run src/agrovision/app.py
 ```
 
-Abra o endereço exibido no terminal (normalmente `http://localhost:8501`).
+Abra o endereço que o terminal mostrar, em geral `http://localhost:8501`.
 
-## Funcionalidades
+Na primeira vez, a base está vazia e o painel abre com dados de demonstração.
+Para ver dados reais, analise imagens na primeira aba. Há 200 imagens de
+exemplo em `data/dataset/`.
 
-- **Análise de folhas:** upload de uma ou mais imagens, com local e data da coleta, e classificação automática (Saudável / Doente) com percentual de confiança
-- **Dashboard:** imagens analisadas, % saudáveis vs. doentes, confiança média, análises por localidade e evolução por dia, com filtros de período, localidade e classificação
-- **Dados simulados** para demonstração, separados das classificações reais do modelo. Ao abrir, o Dashboard mostra os dados reais quando já existem análises salvas, e os simulados quando a base está vazia
-- **Pipeline de dados:** executado automaticamente a cada análise; a aba **🔄 Pipeline de dados** mostra as camadas Bronze, Silver e Gold e permite reprocessar
-- Exportação dos resultados em **CSV** e **JSON**
+## Como funciona
 
-## Integração com a base de dados (Fase 2 — item 1.2)
-
-A fonte de dados é um arquivo CSV local (`dados/analises.csv`), atualizado a cada análise feita no aplicativo. O pipeline ETL (ingestão → transformação → visualização) segue a estrutura de camadas Bronze, Silver e Gold, e o **Dashboard consome a camada Silver**:
-
-| Etapa | Camada | Arquivo | O que acontece |
-|-------|--------|---------|----------------|
-| Ingestão (Extract) | Bronze | `dados/analises.csv` | Resultados brutos da classificação de cada imagem (nome, categoria, confiança, data, localidade, origem) |
-| Transformação (Transform) | Silver | `dados/analises_tratadas.csv` | Padronização de tipos, remoção de registros inválidos e duplicados (mesma imagem, data e local). É a fonte do Dashboard |
-| Carga (Load) | Gold | `dados/indicadores.json` | Indicadores agregados: total, % saudáveis/doentes, confiança média, totais por localidade e tendência diária |
-
-### Como atualizar os dados
-
-1. Na aba **🔬 Análise de folhas**, envie novas imagens. Elas são classificadas, adicionadas à base (Bronze) e o pipeline roda automaticamente.
-2. Na aba **📊 Dashboard**, os gráficos já refletem os novos dados (camada Silver).
-3. Na aba **🔄 Pipeline de dados**, é possível conferir cada camada e reprocessar manualmente.
-
-### Uso pela linha de comando (opcional)
-
-```bash
-# Importar em lote uma pasta de imagens (pasta, localidade, data opcional)
-python importar_novas_imagens.py dataset/doente "Talhão A" 2026-09-10
-
-# Executar o pipeline ETL
-python pipeline_dados.py
+```
+Imagem da folha
+      |
+      v
+OpenCV: redimensiona para 128x128, converte para HSV
+      |
+      v
+Histograma de 32 faixas por canal  ->  vetor de 96 números
+      |
+      v
+Random Forest (scikit-learn)  ->  Saudável ou Doente + confiança
+      |
+      v
+Camada Bronze (CSV)  ->  Silver (validada)  ->  Gold (indicadores)
+                                 |
+                                 v
+                         Painel Streamlit
 ```
 
-Os dados importados por linha de comando aparecem no Dashboard ao recarregar a página.
+Matiz, saturação e brilho separam bem folha verde de folha com mancha
+necrosada, e o histograma descreve a imagem sem depender do enquadramento da
+foto. O detalhe de cada camada está em [docs/arquitetura.md](docs/arquitetura.md).
+
+O pipeline em pandas é o caminho padrão, porque roda local e sem conta em
+nuvem. Para escala, o mesmo fluxo existe em Apache Spark no notebook
+[notebooks/pipeline_spark.py](notebooks/pipeline_spark.py), com tabelas Delta e
+agendamento por Job no Databricks.
+
+## Desempenho do modelo
+
+| Métrica | Valor |
+|---|---|
+| Acurácia no conjunto de teste | 95,00% |
+| Imagens de treino | 160 |
+| Imagens de teste | 40 |
+| Classificador | Random Forest, 200 árvores, semente 42 |
+
+Os números saem de `models/metrics.json`, gravado pelo próprio treino. Para
+reproduzir, rode `python scripts/treinar_modelo.py`. A semente é fixa, logo o
+resultado é sempre o mesmo.
+
+## Limites do protótipo
+
+- O modelo classifica saudável ou doente. Não identifica a doença específica.
+- Foi treinado em uma cultura, o tomateiro, com imagens de pinta-preta.
+- A confiança exibida é a probabilidade que o modelo dá àquela imagem. Não é a
+  acurácia do modelo.
+- O desempenho cai com foto mal iluminada ou com fundo poluído, porque o vetor
+  de características descreve cor.
+- A base de demonstração é simulada e serve para apresentar o painel. Os
+  registros simulados nunca entram na base real.
 
 ## Estrutura do projeto
 
 ```
-AGROVISION/
-├── app.py                      # Aplicação Streamlit (análise, dashboard e pipeline)
-├── exportar_dados.py           # Exportação CSV/JSON
-├── pipeline_dados.py           # Pipeline ETL (Bronze → Silver → Gold)
-├── importar_novas_imagens.py   # Importação em lote via linha de comando
-├── treinar_modelo.py           # Treinamento do classificador
-├── modelo_folhas.pkl           # Modelo treinado
-├── requirements.txt
-├── dataset/                    # Imagens de folhas saudáveis e doentes
-└── dados/                      # Base de dados e camadas do pipeline
+src/agrovision/      aplicativo, pipeline ETL, visão computacional e esquema
+scripts/             treino, importação em lote e geração da base de demonstração
+tests/               testes do pipeline, da visão, do modelo e da exportação
+notebooks/           pipeline em Apache Spark para o Databricks
+data/dataset/        200 imagens de folhas, saudáveis e doentes
+data/exemplos/       base de demonstração do painel
+data/saida/          camadas Bronze, Silver e Gold, geradas em tempo de execução
+models/              modelo treinado e métricas do treino
+docs/                arquitetura, dicionário de dados e material dos vídeos
 ```
 
-## Observações
+## Linha de comando
 
-- O modelo classifica apenas **Saudável/Doente**; não identifica uma doença específica.
-- A confiança exibida é a probabilidade estimada pelo modelo, não uma medida de acurácia geral.
-- Os dados simulados servem apenas para demonstração e não são inferências do modelo.
-- A deduplicação do pipeline considera nome da imagem, data e localidade.
+```bash
+# Classificar uma pasta de imagens de uma vez
+python scripts/importar_imagens.py data/dataset/doente "Talhão A" 2026-09-10
 
-## Integrantes
+# Rodar o pipeline ETL
+python -m agrovision.pipeline
 
-|      Nome         |   RM   |
-|----------------   |--------|
-| Alvaro Matos      | 553751 |
-| Christian Gonzaga | 553775 |
-| Filipe Oliveira   | 552906 |
-| Isabela Barcellos | 553746 |
+# Treinar o modelo de novo
+python scripts/treinar_modelo.py
+
+# Gerar a base de demonstração
+python scripts/gerar_dados_demo.py
+```
+
+## Testes
+
+```bash
+ruff check .
+pytest
+```
+
+O GitHub Actions roda os dois comandos em cada push e em cada pull request.
+
+## Documentação
+
+- [Arquitetura e camadas de dados](docs/arquitetura.md)
+- [Dicionário de dados](docs/dicionario-de-dados.md)
+- [Origem do dataset](data/README.md)
+- [Relatório técnico da Fase 1](docs/relatorio-tecnico-fase1.pdf)
 
 ## Vídeos de apresentação
 
-- **Fase 1:** [Assista no YouTube](https://youtu.be/vDnr77sQk-g)
-- **Fase 2:** _adicionar o link ou o nome do arquivo do vídeo da Fase 2 aqui_
+- Fase 1: https://youtu.be/vDnr77sQk-g
+- Fase 2: a publicar
+
+## Histórico das sprints
+
+A entrega da Fase 1 está preservada na tag `v1.0-fase1`, exatamente como foi
+avaliada. Para ver aquele código:
+
+```bash
+git checkout v1.0-fase1
+```
+
+## Integrantes
+
+| Nome | RM |
+|---|---|
+| Alvaro Matos | 553751 |
+| Christian Gonzaga | 553775 |
+| Filipe Oliveira | 552906 |
+| Isabela Barcellos | 553746 |
+
+## Licença
+
+Código sob licença MIT, em [LICENSE](LICENSE). As imagens de
+`data/dataset/` têm origem e condições próprias, descritas em
+[data/README.md](data/README.md).
