@@ -1,157 +1,97 @@
-from datetime import date, datetime, timedelta
-from pathlib import Path
-import csv
-import hashlib
-import io
+"""AgroVision: aplicativo Streamlit com analise, painel e pipeline.
 
-import cv2
-import joblib
-import numpy as np
+Rode com:
+    streamlit run src/agrovision/app.py
+"""
+
+import hashlib
+from datetime import date
+from pathlib import Path
+
 import pandas as pd
 import streamlit as st
 
-from agrovision.exportacao import CAMPOS, gerar_csv, gerar_json
-from agrovision.pipeline import (
-    ARQUIVO_BRUTO,
-    ARQUIVO_INDICADORES,
-    ARQUIVO_TRATADO,
-    executar_pipeline,
-    garantir_pipeline,
+from agrovision import pipeline
+from agrovision.esquema import (
+    ACURACIA,
+    CATEGORIA,
+    CATEGORIAS_VALIDAS,
+    CODIFICACAO,
+    DATA,
+    DOENTE,
+    FORMATO_DATA,
+    LOCALIDADE,
+    LOCALIDADES_PADRAO,
+    NOME_IMAGEM,
+    ORIGEM,
+    ORIGEM_MODELO,
+    SEPARADOR,
 )
+from agrovision.exportacao import gerar_csv, gerar_json
+from agrovision.modelo import carregar as carregar_modelo
+from agrovision.modelo import prever
+from agrovision.vision import de_bytes
 
 RAIZ = Path(__file__).resolve().parents[2]
-MODELO = RAIZ / "models" / "modelo_folhas.pkl"
-HISTORICO = RAIZ / "data" / "saida" / "analises.csv"
+DEMO = RAIZ / "data" / "exemplos" / "analises_demo.csv"
 
-st.set_page_config(
-    page_title="AgroVision | Fase 2",
-    page_icon="🌱",
-    layout="wide",
-)
+st.set_page_config(page_title="AgroVision | Fase 2", page_icon="🌱", layout="wide")
 
 
 @st.cache_resource
-def carregar_modelo():
-    return joblib.load(MODELO)
+def modelo_em_cache():
+    return carregar_modelo()
 
 
-def extrair_caracteristicas(conteudo):
-    imagem = cv2.imdecode(
-        np.frombuffer(conteudo, np.uint8),
-        cv2.IMREAD_COLOR,
-    )
-    if imagem is None:
-        return None
+@st.cache_data
+def dados_demonstracao() -> list[dict]:
+    """Base de demonstracao versionada no repositorio.
 
-    hsv = cv2.cvtColor(
-        cv2.resize(imagem, (128, 128)),
-        cv2.COLOR_BGR2HSV,
-    )
-    histogramas = []
-
-    for canal, limites in [(0, 180), (1, 256), (2, 256)]:
-        hist = cv2.calcHist(
-            [hsv],
-            [canal],
-            None,
-            [32],
-            [0, limites],
-        )
-        histogramas.append(cv2.normalize(hist, hist).flatten())
-
-    return np.concatenate(histogramas)
-
-
-def carregar_historico():
-    if not HISTORICO.exists():
+    Sao registros de exemplo, nao inferencias do modelo. Servem para o painel
+    ter graficos quando ninguem analisou imagem nenhuma ainda.
+    """
+    if not DEMO.exists():
         return []
 
-    with HISTORICO.open(encoding="utf-8-sig", newline="") as arquivo:
-        return list(csv.DictReader(arquivo, delimiter=";"))
+    return pd.read_csv(DEMO, sep=SEPARADOR, encoding=CODIFICACAO).to_dict("records")
 
 
-def carregar_dados_tratados():
-    # Camada Silver do pipeline ETL: é a fonte do Dashboard para dados reais
-    garantir_pipeline()
-
-    if not ARQUIVO_TRATADO.exists():
-        return []
-
-    with ARQUIVO_TRATADO.open(encoding="utf-8-sig", newline="") as arquivo:
-        return list(csv.DictReader(arquivo, delimiter=";"))
+def dados_reais() -> list[dict]:
+    """Camada Silver do pipeline: a fonte do painel para dados reais."""
+    pipeline.garantir()
+    return pipeline.ler_camada(pipeline.SILVER).to_dict("records")
 
 
-def ler_camada(caminho):
-    # Lê uma camada do pipeline (Bronze/Silver) como DataFrame, sem reprocessar
-    if not caminho.exists():
-        return pd.DataFrame(columns=CAMPOS)
+def preparar(registros: list[dict]) -> pd.DataFrame:
+    """Converte os registros em DataFrame e descarta linhas sem data ou valor."""
+    df = pd.DataFrame(registros)
 
-    return pd.read_csv(caminho, sep=";", encoding="utf-8-sig")
+    if df.empty:
+        return df
 
+    df[DATA] = pd.to_datetime(df[DATA], errors="coerce")
+    df[ACURACIA] = pd.to_numeric(df[ACURACIA], errors="coerce")
 
-def salvar_historico(resultados):
-    HISTORICO.parent.mkdir(parents=True, exist_ok=True)
-
-    with HISTORICO.open("w", encoding="utf-8-sig", newline="") as arquivo:
-        escritor = csv.DictWriter(
-            arquivo,
-            fieldnames=CAMPOS,
-            delimiter=";",
-        )
-        escritor.writeheader()
-        escritor.writerows(resultados)
-
-
-def dados_simulados():
-    # Somente demonstração: estes registros não são inferências do modelo.
-    inicio = date.today() - timedelta(days=29)
-    registros = []
-
-    for indice in range(90):
-        dia = inicio + timedelta(days=indice % 30)
-        doente = (indice * 17 + indice // 30) % 10 < 4
-
-        registros.append(
-            {
-                "nome_imagem": f"exemplo_{indice + 1:03}.jpg",
-                "categoria": "Doente" if doente else "Saudável",
-                "acuracia": round(78 + (indice * 7) % 20 + 0.35, 2),
-                "data": dia.isoformat(),
-                "localidade": ["Talhão A", "Talhão B", "Talhão C"][indice % 3],
-                "origem": "Simulado",
-            }
-        )
-
-    return registros
+    return df.dropna(subset=[DATA, ACURACIA])
 
 
 st.title("🌱 AgroVision")
-st.caption("Classificação e monitoramento de folhas de tomateiro | Fase 2")
-aba_analise, aba_dashboard, aba_pipeline = st.tabs(
-    ["🔬 Análise de folhas", "📊 Dashboard", "🔄 Pipeline de dados"]
+st.caption("Classificacao e monitoramento de folhas de tomateiro | Fase 2")
+
+aba_analise, aba_painel, aba_pipeline = st.tabs(
+    ["🔬 Analise de folhas", "📊 Painel", "🔄 Pipeline de dados"]
 )
 
 
 with aba_analise:
-    st.write(
-        "Envie imagens de folhas de tomateiro para classificação saudável/doente."
-    )
-    localidade = st.selectbox(
-        "Local da coleta",
-        ["Talhão A", "Talhão B", "Talhão C", "Outro"],
-    )
+    st.write("Envie imagens de folhas de tomateiro para classificar saudavel ou doente.")
+
+    localidade = st.selectbox("Local da coleta", [*LOCALIDADES_PADRAO, "Outro"])
 
     if localidade == "Outro":
-        localidade = st.text_input(
-            "Nome do local",
-            max_chars=60,
-        ).strip()
+        localidade = st.text_input("Nome do local", max_chars=60).strip()
 
-    dia_coleta = st.date_input(
-        "Data da coleta",
-        value=date.today(),
-        max_value=date.today(),
-    )
+    dia_coleta = st.date_input("Data da coleta", value=date.today(), max_value=date.today())
 
     arquivos = st.file_uploader(
         "Selecione uma ou mais imagens",
@@ -165,310 +105,215 @@ with aba_analise:
             st.warning("Selecione imagens e informe o local da coleta.")
         else:
             try:
-                modelo = carregar_modelo()
-                historico = carregar_historico()
-                novos = 0
+                modelo = modelo_em_cache()
+                processadas = st.session_state.setdefault("processadas", set())
+                novos = []
 
                 for arquivo in arquivos:
                     conteudo = arquivo.getvalue()
-                    caracteristicas = extrair_caracteristicas(conteudo)
+                    caracteristicas = de_bytes(conteudo)
 
                     if caracteristicas is None:
-                        st.warning(f"Não foi possível ler {arquivo.name}.")
+                        st.warning(f"Nao foi possivel ler {arquivo.name}.")
                         continue
 
-                    entrada = caracteristicas.reshape(1, -1)
-                    previsao = modelo.predict(entrada)[0]
-                    categoria = "Saudável" if previsao == 0 else "Doente"
-                    confianca = round(
-                        float(max(modelo.predict_proba(entrada)[0]) * 100),
-                        2,
-                    )
-
-                    # A mesma imagem pode ser analisada em outra data ou talhão.
-                    digest = hashlib.sha256(conteudo).hexdigest()
+                    # A mesma imagem pode ser analisada em outra data ou talhao.
+                    # O hash do conteudo evita contar duas vezes o mesmo envio.
                     chave = (
-                        digest,
+                        hashlib.sha256(conteudo).hexdigest(),
                         dia_coleta.isoformat(),
                         localidade,
                     )
 
-                    if chave in st.session_state.get(
-                        "imagens_processadas",
-                        set(),
-                    ):
+                    if chave in processadas:
                         st.info(
-                            f"{arquivo.name} já foi processada nesta sessão "
-                            "para este local e data."
+                            f"{arquivo.name} foi processada nesta sessao "
+                            "para este local e esta data."
                         )
                         continue
 
-                    historico.append(
+                    categoria, confianca = prever(modelo, caracteristicas)
+                    novos.append(
                         {
-                            "nome_imagem": arquivo.name,
-                            "categoria": categoria,
-                            "acuracia": confianca,
-                            "data": dia_coleta.isoformat(),
-                            "localidade": localidade,
-                            "origem": "Modelo",
+                            NOME_IMAGEM: arquivo.name,
+                            CATEGORIA: categoria,
+                            ACURACIA: confianca,
+                            DATA: dia_coleta.isoformat(),
+                            LOCALIDADE: localidade,
+                            ORIGEM: ORIGEM_MODELO,
                         }
                     )
+                    processadas.add(chave)
 
-                    st.session_state.setdefault(
-                        "imagens_processadas",
-                        set(),
-                    ).add(chave)
-
-                    novos += 1
-
-                    with st.expander(
-                        f"{arquivo.name}: {categoria} ({confianca:.2f}%)"
-                    ):
+                    with st.expander(f"{arquivo.name}: {categoria} ({confianca:.2f}%)"):
                         st.image(conteudo, width=360)
 
                 if novos:
-                    salvar_historico(historico)
-                    executar_pipeline()
+                    pipeline.acrescentar_bronze(novos)
+                    pipeline.executar()
                     st.success(
-                        f"{novos} análise(s) salva(s) e processada(s) pelo pipeline. "
-                        "Veja a aba Dashboard."
+                        f"{len(novos)} analise(s) gravada(s) e processada(s) pelo "
+                        "pipeline. Veja a aba Painel."
                     )
 
             except Exception as erro:
-                st.error(f"Falha na análise: {erro}")
+                st.error(f"Falha na analise: {erro}")
 
     st.caption(
-        "A confiança é a probabilidade estimada pelo modelo, "
-        "não uma medição de acurácia geral."
+        "A confianca e a probabilidade estimada pelo modelo para aquela imagem, "
+        "nao uma medida de acuracia geral."
     )
 
 
-with aba_dashboard:
+with aba_painel:
     demonstracao = st.toggle(
-        "Exibir dados simulados para demonstração",
-        value=not HISTORICO.exists(),
+        "Exibir dados de demonstracao",
+        value=not pipeline.SILVER.exists(),
+        help="Use os dados de demonstracao para ver o painel antes de analisar imagens.",
     )
-    registros = (
-        dados_simulados()
-        if demonstracao
-        else carregar_dados_tratados()
-    )
+
+    registros = dados_demonstracao() if demonstracao else dados_reais()
 
     if demonstracao:
         st.info(
-            "Dados simulados: exemplos para demonstrar os gráficos. "
-            "Nenhuma doença específica foi identificada pelo modelo."
+            "Dados de demonstracao: registros de exemplo para mostrar os graficos. "
+            "Nenhuma doenca especifica foi identificada pelo modelo."
         )
     else:
         st.info(
-            "Dados reais: classificações feitas neste aplicativo, "
-            "tratadas pelo pipeline ETL (dados/analises_tratadas.csv)."
+            "Dados reais: classificacoes feitas neste aplicativo, tratadas pelo "
+            "pipeline ETL (camada Silver)."
         )
 
-    if not registros:
+    df = preparar(registros)
+
+    if df.empty:
         st.warning(
-            "Ainda não há análises salvas. "
-            "Use a aba Análise de folhas ou ative os dados simulados."
+            "Ainda nao existem analises. Use a aba Analise de folhas ou ligue os "
+            "dados de demonstracao."
         )
     else:
-        df = pd.DataFrame(registros)
-        df["data"] = pd.to_datetime(df["data"], errors="coerce")
-        df["acuracia"] = pd.to_numeric(
-            df["acuracia"],
-            errors="coerce",
+        menor, maior = df[DATA].dt.date.min(), df[DATA].dt.date.max()
+        locais = sorted(df[LOCALIDADE].unique())
+
+        f1, f2, f3 = st.columns(3)
+        intervalo = f1.date_input(
+            "Periodo", value=(menor, maior), min_value=menor, max_value=maior
         )
-        df = df.dropna(subset=["data", "acuracia"])
+        escolhidos = f2.multiselect("Localidade", locais, default=locais)
+        categorias = f3.multiselect(
+            "Classificacao", CATEGORIAS_VALIDAS, default=CATEGORIAS_VALIDAS
+        )
+
+        if isinstance(intervalo, tuple) and len(intervalo) == 2:
+            df = df[df[DATA].dt.date.between(*intervalo)]
+
+        df = df[df[LOCALIDADE].isin(escolhidos) & df[CATEGORIA].isin(categorias)]
 
         if df.empty:
-            st.warning("Os registros não têm datas e confianças válidas.")
+            st.warning("Nenhum registro corresponde aos filtros escolhidos.")
         else:
-            menor = df["data"].dt.date.min()
-            maior = df["data"].dt.date.max()
+            total = len(df)
+            doentes = int((df[CATEGORIA] == DOENTE).sum())
+            saudaveis = total - doentes
 
-            intervalo = st.date_input(
-                "Período",
-                value=(menor, maior),
-                min_value=menor,
-                max_value=maior,
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Imagens analisadas", total)
+            m2.metric("Saudaveis", f"{saudaveis / total:.1%}")
+            m3.metric("Doentes", f"{doentes / total:.1%}")
+            m4.metric("Confianca media", f"{df[ACURACIA].mean():.1f}%")
+
+            esquerda, direita = st.columns(2)
+
+            with esquerda:
+                st.subheader("Distribuicao das classificacoes")
+                st.bar_chart(
+                    df[CATEGORIA].value_counts().reindex(CATEGORIAS_VALIDAS, fill_value=0)
+                )
+
+            with direita:
+                st.subheader("Analises por localidade")
+                st.bar_chart(pd.crosstab(df[LOCALIDADE], df[CATEGORIA]))
+
+            st.subheader("Evolucao por dia")
+            st.caption(
+                "Uma linha de doentes subindo em um talhao indica foco de praga "
+                "e sugere acao preventiva naquele talhao."
+            )
+            diario = (
+                df.groupby([df[DATA].dt.date, CATEGORIA])
+                .size()
+                .unstack(fill_value=0)
+                .reindex(columns=CATEGORIAS_VALIDAS, fill_value=0)
+            )
+            st.line_chart(diario)
+
+            st.subheader("Historico filtrado")
+            exibicao = df.copy()
+            exibicao[DATA] = exibicao[DATA].dt.strftime(FORMATO_DATA)
+            st.dataframe(exibicao, use_container_width=True, hide_index=True)
+
+            registros_exibidos = exibicao.to_dict("records")
+            c1, c2 = st.columns(2)
+            c1.download_button(
+                "Baixar CSV filtrado",
+                gerar_csv(registros_exibidos),
+                file_name="analises_filtradas.csv",
+                mime="text/csv",
+            )
+            c2.download_button(
+                "Baixar JSON filtrado",
+                gerar_json(registros_exibidos),
+                file_name="analises_filtradas.json",
+                mime="application/json",
             )
 
-            locais = st.multiselect(
-                "Localidade",
-                sorted(df["localidade"].unique()),
-                default=sorted(df["localidade"].unique()),
-            )
+    pode_limpar = not demonstracao and pipeline.BRONZE.exists()
 
-            categorias = st.multiselect(
-                "Classificação",
-                ["Saudável", "Doente"],
-                default=["Saudável", "Doente"],
-            )
-
-            if isinstance(intervalo, tuple) and len(intervalo) == 2:
-                df = df[
-                    df["data"].dt.date.between(
-                        intervalo[0],
-                        intervalo[1],
-                    )
-                ]
-
-            df = df[
-                df["localidade"].isin(locais)
-                & df["categoria"].isin(categorias)
-            ]
-
-            if df.empty:
-                st.warning(
-                    "Nenhum registro corresponde aos filtros escolhidos."
-                )
-            else:
-                total = len(df)
-                saudaveis = int(
-                    (df["categoria"] == "Saudável").sum()
-                )
-                doentes = int(
-                    (df["categoria"] == "Doente").sum()
-                )
-
-                colunas = st.columns(4)
-
-                for coluna, titulo, valor in zip(
-                    colunas,
-                    [
-                        "Imagens analisadas",
-                        "Saudáveis",
-                        "Doentes",
-                        "Confiança média",
-                    ],
-                    [
-                        total,
-                        f"{saudaveis / total:.1%}",
-                        f"{doentes / total:.1%}",
-                        f"{df['acuracia'].mean():.1f}%",
-                    ],
-                ):
-                    coluna.metric(titulo, valor)
-
-                esquerda, direita = st.columns(2)
-
-                with esquerda:
-                    st.subheader("Distribuição das classificações")
-                    st.bar_chart(
-                        df["categoria"]
-                        .value_counts()
-                        .reindex(
-                            ["Saudável", "Doente"],
-                            fill_value=0,
-                        )
-                    )
-
-                with direita:
-                    st.subheader("Análises por localidade")
-                    st.bar_chart(
-                        pd.crosstab(
-                            df["localidade"],
-                            df["categoria"],
-                        )
-                    )
-
-                st.subheader("Evolução por dia")
-                diario = (
-                    df.groupby(
-                        [df["data"].dt.date, "categoria"]
-                    )
-                    .size()
-                    .unstack(fill_value=0)
-                )
-
-                st.line_chart(
-                    diario.reindex(
-                        columns=["Saudável", "Doente"],
-                        fill_value=0,
-                    )
-                )
-
-                st.subheader("Histórico filtrado")
-                exibicao = df.copy()
-                exibicao["data"] = exibicao["data"].dt.strftime(
-                    "%Y-%m-%d"
-                )
-
-                st.dataframe(
-                    exibicao,
-                    use_container_width=True,
-                    hide_index=True,
-                )
-
-                c1, c2 = st.columns(2)
-
-                c1.download_button(
-                    "Baixar CSV filtrado",
-                    gerar_csv(exibicao.to_dict("records")),
-                    file_name="analises_filtradas.csv",
-                    mime="text/csv",
-                )
-
-                c2.download_button(
-                    "Baixar JSON filtrado",
-                    gerar_json(exibicao.to_dict("records")),
-                    file_name="analises_filtradas.json",
-                    mime="application/json",
-                )
-
-    if not demonstracao and HISTORICO.exists():
-        if st.button("Apagar histórico salvo", type="secondary"):
-            for camada in (
-                HISTORICO,
-                ARQUIVO_TRATADO,
-                ARQUIVO_INDICADORES,
-            ):
-                camada.unlink(missing_ok=True)
-
-            st.session_state.pop("imagens_processadas", None)
-            st.rerun()
+    if pode_limpar and st.button("Apagar historico salvo", type="secondary"):
+        pipeline.limpar()
+        st.session_state.pop("processadas", None)
+        st.rerun()
 
 
 with aba_pipeline:
-    st.write(
-        "Pipeline ETL da integração com a base de dados: "
-        "**Ingestão → Transformação → Carga**."
-    )
+    st.write("Pipeline ETL da integracao com a base de dados: Bronze, Silver e Gold.")
     st.caption(
-        "Fonte: dados/analises.csv (gerado pela aba Análise de folhas). "
-        "O Dashboard lê a camada tratada (Silver)."
+        "A Bronze recebe o resultado de cada classificacao. A Silver valida e "
+        "deduplica, e alimenta o painel. A Gold guarda os indicadores agregados."
     )
 
-    if st.button("▶️ Reprocessar pipeline", type="primary"):
-        executar_pipeline()
+    if st.button("Reprocessar pipeline", type="primary"):
+        pipeline.executar()
         st.success("Pipeline executado: camadas Silver e Gold atualizadas.")
     else:
-        garantir_pipeline()
+        pipeline.garantir()
 
-    bruto = ler_camada(ARQUIVO_BRUTO)
-    tratado = ler_camada(ARQUIVO_TRATADO)
+    bronze = pipeline.ler_camada(pipeline.BRONZE)
+    silver = pipeline.ler_camada(pipeline.SILVER)
 
-    if bruto.empty:
+    if bronze.empty:
         st.info(
-            "Ainda não há dados. Analise imagens na aba Análise de folhas "
-            "e o pipeline será executado automaticamente."
+            "Ainda nao existem dados. Analise imagens na aba Analise de folhas e o "
+            "pipeline roda automaticamente."
         )
     else:
         c1, c2, c3 = st.columns(3)
-        c1.metric("Registros brutos (Bronze)", len(bruto))
-        c2.metric("Registros tratados (Silver)", len(tratado))
-        c3.metric("Descartados na validação", len(bruto) - len(tratado))
+        c1.metric("Registros brutos (Bronze)", len(bronze))
+        c2.metric("Registros tratados (Silver)", len(silver))
+        c3.metric("Descartados na validacao", len(bronze) - len(silver))
 
-        st.subheader("1️⃣ Ingestão — dados brutos (Bronze)")
-        st.dataframe(bruto, use_container_width=True, hide_index=True)
+        st.subheader("1. Ingestao: dados brutos (Bronze)")
+        st.dataframe(bronze, use_container_width=True, hide_index=True)
 
-        st.subheader("2️⃣ Transformação — dados tratados (Silver)")
-        st.dataframe(tratado, use_container_width=True, hide_index=True)
+        st.subheader("2. Transformacao: dados tratados (Silver)")
+        st.dataframe(silver, use_container_width=True, hide_index=True)
 
-        st.subheader("3️⃣ Carga — indicadores agregados (Gold)")
-        if ARQUIVO_INDICADORES.exists():
-            st.json(ARQUIVO_INDICADORES.read_text(encoding="utf-8"))
+        st.subheader("3. Carga: indicadores agregados (Gold)")
+        if pipeline.GOLD.exists():
+            st.json(pipeline.GOLD.read_text(encoding="utf-8"))
 
         st.caption(
-            f"Arquivos em dados/: {ARQUIVO_BRUTO.name}, "
-            f"{ARQUIVO_TRATADO.name}, {ARQUIVO_INDICADORES.name}"
+            f"Arquivos em data/saida/: {pipeline.BRONZE.name}, "
+            f"{pipeline.SILVER.name}, {pipeline.GOLD.name}"
         )
