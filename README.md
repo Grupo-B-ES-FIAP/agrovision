@@ -10,8 +10,9 @@ quais apresentam sinais de doença. Cada análise fica guardada com data e
 talhão. O painel mostra onde o problema está crescendo. Com isso, a aplicação
 de defensivo vai para o talhão que precisa, e não para a fazenda inteira.
 
-Projeto acadêmico AgroSmart, FIAP. Duas sprints: visão computacional na Fase 1,
-organização e visualização dos dados na Fase 2.
+Projeto acadêmico AgroSmart, FIAP. Três sprints: visão computacional na Fase 1,
+organização e visualização dos dados na Fase 2, regras de decisão e automação
+na Fase 3.
 
 ![Painel do AgroVision](docs/img/painel.jpg)
 
@@ -21,6 +22,7 @@ organização e visualização dos dados na Fase 2.
 |---|---|
 | Análise de folhas | Recebe uma ou mais imagens, com o local e a data da coleta. Classifica cada folha como saudável ou doente, com o percentual de confiança |
 | Painel | Imagens analisadas, percentual de saudáveis e doentes, confiança média, contagem por talhão e evolução por dia. Filtros de período, local e classificação |
+| Inteligência no campo | Aplica as regras de decisão da Fase 3 por talhão e dia. Mostra o nível atual de cada talhão, a ação recomendada, o histórico de decisões e gera o relatório de intervenção |
 | Pipeline de dados | Mostra as três camadas de dados, permite reprocessar e exportar os resultados em CSV e JSON |
 
 ## Como rodar
@@ -80,6 +82,17 @@ nuvem. Para escala, o mesmo fluxo existe em Apache Spark no notebook
 [notebooks/pipeline_spark.py](notebooks/pipeline_spark.py), com tabelas Delta e
 agendamento por Job no Databricks.
 
+## Fase 3: decisão e automação
+
+As regras de decisão estão em
+[Fase3_Logica_Decisao/Regras_e_Fluxograma.pdf](Fase3_Logica_Decisao/Regras_e_Fluxograma.pdf).
+A cada análise nova, o pipeline aplica as regras e grava
+`data/saida/alertas.json` e um relatório de intervenção em
+`data/saida/relatorios/`. O funcionamento e as capturas de tela estão em
+[docs/fase3-automacao.md](docs/fase3-automacao.md).
+
+![Aba Inteligência no campo](docs/img/fase3-situacao-demo.png)
+
 ## Desempenho do modelo
 
 | Métrica | Valor |
@@ -107,9 +120,10 @@ resultado é sempre o mesmo.
 ## Estrutura do projeto
 
 ```
-src/agrovision/      aplicativo, pipeline ETL, visão computacional e esquema
+src/agrovision/      aplicativo, pipeline ETL, visão computacional, regras e automação
+Fase3_Logica_Decisao/  regras de decisão da Fase 3 (PDF e fluxograma)
 scripts/             treino, importação em lote e geração da base de demonstração
-tests/               testes do pipeline, da visão, do modelo e da exportação
+tests/               testes do pipeline, da visão, do modelo, da exportação e das regras
 notebooks/           pipeline em Apache Spark para o Databricks
 data/dataset/        200 imagens de folhas, saudáveis e doentes
 data/exemplos/       base de demonstração do painel
@@ -124,8 +138,12 @@ docs/                arquitetura, dicionário de dados e material dos vídeos
 # Classificar uma pasta de imagens de uma vez
 python scripts/importar_imagens.py data/dataset/doente "Talhão A" 2026-09-10
 
-# Rodar o pipeline ETL
+# Rodar o pipeline ETL (inclui a automação da Fase 3)
 python -m agrovision.pipeline
+
+# Gerar alertas e relatório de intervenção
+python -m agrovision.automacao          # dados reais
+python -m agrovision.automacao --demo   # base de demonstração
 
 # Treinar o modelo de novo
 python scripts/treinar_modelo.py
@@ -146,6 +164,7 @@ O GitHub Actions roda os dois comandos em cada push e em cada pull request.
 ## Documentação
 
 - [Arquitetura e camadas de dados](docs/arquitetura.md)
+- [Fase 3: automação das ações](docs/fase3-automacao.md)
 - [Dicionário de dados](docs/dicionario-de-dados.md)
 - [Origem do dataset](data/README.md)
 - [Relatório técnico da Fase 1](docs/relatorio-tecnico-fase1.pdf)

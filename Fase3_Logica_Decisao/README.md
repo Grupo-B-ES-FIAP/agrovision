@@ -6,11 +6,11 @@ Contribuição individual para o projeto em grupo **AgroSmart / AgroVision**. Im
 
 | Arquivo | Finalidade |
 | --- | --- |
-| `motor_decisao.py` | Motor de regras R1–R5, leitura de CSV e geração de alertas JSON |
-| `teste_regras.py` | Testes simulados, sem alterar dados reais |
+| `src/agrovision/decisao.py` | Motor de regras R1–R5 (antes `motor_decisao.py`) |
+| `tests/test_decisao.py` | Testes pytest das regras (antes `teste_regras.py`) |
 | `Regras_e_Fluxograma.pdf` | Documento do requisito 1 |
 | `Evidencia_Testes.png` | Captura do terminal com os cinco testes aprovados |
-| `INTEGRACAO.md` | Instruções para incorporar ao repositório principal |
+| `INTEGRACAO.md` | Onde cada parte foi integrada no repositório principal |
 
 ## Regras
 
@@ -24,21 +24,21 @@ O motor usa **AND**, **OR** e **NOT**. A prioridade das regras é R5, R3, R4, R2
 
 ## Executar testes
 
-Requer Python 3.10+; os testes e o motor utilizam apenas a biblioteca padrão.
+Na raiz do repositório, com o projeto instalado (`pip install -e ".[dev]"`):
 
 ```bash
-python teste_regras.py
+pytest tests/test_decisao.py
 ```
 
 ## Executar com dados reais
 
-Copie `motor_decisao.py` para a raiz do projeto AgroVision, ao lado de `app.py`, e mantenha o arquivo `dados/analises_tratadas.csv` do projeto principal. Depois:
+O motor lê a camada Silver do pipeline, `data/saida/analises_tratadas.csv`. A automação do passo 2 roda as regras a cada análise nova e grava `data/saida/alertas.json`. Para rodar à mão:
 
 ```bash
-python motor_decisao.py
+python -m agrovision.automacao
 ```
 
-O resultado é salvo em `dados/alertas.json`. Consulte `INTEGRACAO.md` para ligar o motor ao Streamlit sem sobrescrever o trabalho dos colegas.
+A descrição completa da automação está em [docs/fase3-automacao.md](../docs/fase3-automacao.md).
 
 ## Limitações
 
@@ -46,4 +46,4 @@ Os limiares são didáticos, não parâmetros agronômicos validados. O classifi
 
 ## Status
 
-As regras R1–R5 foram aprovadas em testes simulados executados localmente; veja `Evidencia_Testes.png`. A interface Streamlit foi verificada visualmente com os dados disponíveis, mas a integração no repositório consolidado deve ser retestada pelo grupo.
+As regras R1–R5 foram aprovadas em testes simulados executados localmente; veja `Evidencia_Testes.png`. Depois da integração, os mesmos cenários rodam no CI em `tests/test_decisao.py`, e a aba Inteligência no campo do aplicativo exibe as decisões.
