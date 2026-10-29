@@ -19,6 +19,7 @@ def camadas(tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline, "BRONZE", saida / "analises.csv")
     monkeypatch.setattr(pipeline, "SILVER", saida / "analises_tratadas.csv")
     monkeypatch.setattr(pipeline, "GOLD", saida / "indicadores.json")
+    monkeypatch.setattr(pipeline, "ALERTAS", saida / "alertas.json")
 
     return pipeline
 

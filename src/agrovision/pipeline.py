@@ -8,6 +8,9 @@ Tres camadas, no padrao medalhao:
 - Gold (data/saida/indicadores.json): indicadores agregados, prontos para
   consumo analitico.
 
+Depois da carga, a automacao da Fase 3 aplica as regras de decisao e grava
+data/saida/alertas.json e um relatorio de intervencao em data/saida/relatorios/.
+
 Rode pela linha de comando com:
     python -m agrovision.pipeline
 """
@@ -19,6 +22,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from agrovision import automacao
 from agrovision.esquema import (
     ACURACIA,
     CAMPOS,
@@ -41,6 +45,7 @@ SAIDA = RAIZ / "data" / "saida"
 BRONZE = SAIDA / "analises.csv"
 SILVER = SAIDA / "analises_tratadas.csv"
 GOLD = SAIDA / "indicadores.json"
+ALERTAS = SAIDA / automacao.ALERTAS
 
 
 def acrescentar_bronze(registros: list[dict]) -> int:
@@ -146,10 +151,29 @@ def carregar(df: pd.DataFrame) -> dict:
     return indicadores
 
 
+def automatizar(df: pd.DataFrame) -> None:
+    """Aplica as regras de decisao aos dados tratados e grava alertas e relatorio.
+
+    Uma falha aqui nao invalida as camadas ja gravadas, entao so e registrada.
+    """
+    try:
+        resultado = automacao.executar(df.to_dict("records"), SAIDA)
+    except Exception as erro:
+        print(f"[Automacao] Falha ao gerar alertas: {erro}")
+        return
+
+    print(
+        f"[Automacao] {len(resultado['alertas'])} decisao(oes) gravada(s) em "
+        f"{resultado['arquivo_alertas'].name} e {resultado['arquivo_relatorio'].name}"
+    )
+
+
 def executar() -> dict:
-    """Roda as tres camadas em sequencia."""
+    """Roda as tres camadas em sequencia e depois a automacao."""
     print("=== Pipeline AgroVision: Bronze -> Silver -> Gold ===")
-    indicadores = carregar(transformar(extrair()))
+    df = transformar(extrair())
+    indicadores = carregar(df)
+    automatizar(df)
     print("=== Pipeline concluido ===")
     return indicadores
 
@@ -188,8 +212,8 @@ def ler_camada(caminho: Path) -> pd.DataFrame:
 
 
 def limpar() -> None:
-    """Apaga as tres camadas. Usado pelo botao de limpeza do painel."""
-    for camada in (BRONZE, SILVER, GOLD):
+    """Apaga as tres camadas e os alertas. Usado pelo botao de limpeza do painel."""
+    for camada in (BRONZE, SILVER, GOLD, ALERTAS):
         camada.unlink(missing_ok=True)
 
 

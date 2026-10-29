@@ -1,4 +1,4 @@
-"""AgroVision: aplicativo Streamlit com analise, painel e pipeline.
+"""AgroVision: aplicativo Streamlit com analise, painel, decisoes e pipeline.
 
 Rode com:
     streamlit run src/agrovision/app.py
@@ -11,7 +11,8 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from agrovision import pipeline
+from agrovision import automacao, pipeline
+from agrovision.decisao import LIMIAR_CRITICO, REGRAS_DE_INTERVENCAO, avaliar, situacao_atual
 from agrovision.esquema import (
     ACURACIA,
     CATEGORIA,
@@ -39,7 +40,16 @@ DEMO = RAIZ / "data" / "exemplos" / "analises_demo.csv"
 # Ordem igual a de CATEGORIAS_VALIDAS, que e a ordem das colunas nos graficos.
 PALETA = [CORES[categoria] for categoria in CATEGORIAS_VALIDAS]
 
-st.set_page_config(page_title="AgroVision | Fase 2", page_icon="🌱", layout="wide")
+# Caixa do Streamlit usada para cada regra: vermelho, amarelo ou verde.
+CAIXA_POR_REGRA = {
+    "R5": st.error,
+    "R3": st.error,
+    "R4": st.warning,
+    "R2": st.warning,
+    "R1": st.success,
+}
+
+st.set_page_config(page_title="AgroVision | Fase 3", page_icon="🌱", layout="wide")
 
 
 @st.cache_resource
@@ -80,10 +90,10 @@ def preparar(registros: list[dict]) -> pd.DataFrame:
 
 
 st.title("🌱 AgroVision")
-st.caption("Classificacao e monitoramento de folhas de tomateiro | Fase 2")
+st.caption("Classificacao e monitoramento de folhas de tomateiro | Fase 3")
 
-aba_analise, aba_painel, aba_pipeline = st.tabs(
-    ["🔬 Analise de folhas", "📊 Painel", "🔄 Pipeline de dados"]
+aba_analise, aba_painel, aba_decisao, aba_pipeline = st.tabs(
+    ["🔬 Analise de folhas", "📊 Painel", "🧠 Inteligencia no campo", "🔄 Pipeline de dados"]
 )
 
 
@@ -157,7 +167,8 @@ with aba_analise:
                     pipeline.executar()
                     st.success(
                         f"{len(novos)} analise(s) gravada(s) e processada(s) pelo "
-                        "pipeline. Veja a aba Painel."
+                        "pipeline. Alertas e relatorio de intervencao atualizados. "
+                        "Veja as abas Painel e Inteligencia no campo."
                     )
 
             except Exception as erro:
@@ -287,7 +298,105 @@ with aba_painel:
     if pode_limpar and st.button("Apagar historico salvo", type="secondary"):
         pipeline.limpar()
         st.session_state.pop("processadas", None)
+        st.session_state.pop("relatorio", None)
         st.rerun()
+
+
+with aba_decisao:
+    st.write(
+        "Regras de decisao da Fase 3 aplicadas por talhao e por dia, com a acao "
+        "recomendada para cada situacao."
+    )
+    fonte = "base de demonstração" if demonstracao else "camada Silver"
+    st.caption(
+        f"Fonte: {fonte}. Para trocar, use o seletor de dados de demonstracao na "
+        "aba Painel. Os limiares sao didaticos e as recomendacoes nao acionam "
+        "nenhum equipamento."
+    )
+
+    alertas = avaliar(registros)
+
+    if not alertas:
+        st.warning(
+            "Ainda nao existem analises para avaliar. Use a aba Analise de folhas ou "
+            "ligue os dados de demonstracao."
+        )
+    else:
+        atual = situacao_atual(alertas)
+        intervir = sum(a["regra"] in REGRAS_DE_INTERVENCAO for a in atual)
+
+        st.subheader("Situacao atual por talhao")
+        st.caption(
+            f"Ultimo dia com analises em cada talhao. {intervir} de {len(atual)} "
+            "talhao(oes) pedem intervencao."
+        )
+        colunas = st.columns(min(len(atual), 3))
+        for i, alerta in enumerate(atual):
+            with colunas[i % len(colunas)]:
+                CAIXA_POR_REGRA[alerta["regra"]](
+                    f"**{alerta['talhao']}** | {alerta['data']}\n\n"
+                    f"{alerta['nivel']} ({alerta['regra']}): "
+                    f"{alerta['percentual_doentes']:.1f}% de folhas doentes\n\n"
+                    f"{alerta['recomendacao']}"
+                )
+
+        decisoes = pd.DataFrame(alertas)
+
+        st.subheader("Percentual de folhas doentes por dia")
+        st.caption(
+            f"Acima da linha de {LIMIAR_CRITICO}% o dia e critico (R3). Critico em "
+            "3 dias seguidos com folha doente vira prioridade maxima (R5)."
+        )
+        evolucao = decisoes.pivot_table(
+            index="data", columns="talhao", values="percentual_doentes"
+        )
+        evolucao[f"Limiar critico ({LIMIAR_CRITICO}%)"] = LIMIAR_CRITICO
+        # Com um dia so, a linha nao tem o que ligar e o grafico sai vazio.
+        if len(evolucao) > 1:
+            st.line_chart(evolucao)
+        else:
+            st.bar_chart(evolucao.T.rename(columns=str), horizontal=True)
+
+        st.subheader("Historico de decisoes")
+        so_intervencao = st.toggle("Mostrar so os dias que pedem intervencao", value=True)
+        if so_intervencao:
+            decisoes = decisoes[decisoes["regra"].isin(REGRAS_DE_INTERVENCAO)]
+        st.dataframe(
+            decisoes[
+                ["data", "talhao", "total", "doentes", "percentual_doentes", "regra",
+                 "nivel", "recomendacao"]
+            ].sort_values(["data", "talhao"], ascending=[False, True]),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        st.subheader("Relatorio de intervencao")
+        st.caption(
+            "O pipeline gera o relatorio sozinho a cada analise nova. O botao gera "
+            "um relatorio agora com os dados exibidos."
+        )
+        # A demonstracao grava em uma subpasta para nao sobrescrever os alertas reais.
+        destino = pipeline.SAIDA / "demonstracao" if demonstracao else pipeline.SAIDA
+
+        if st.button("Gerar relatorio de intervencao", type="primary"):
+            st.session_state["relatorio"] = automacao.executar(registros, destino, fonte)
+
+        # O relatorio da sessao so vale para a mesma fonte de dados.
+        resultado = st.session_state.get("relatorio")
+        if resultado and resultado["fonte"] == fonte:
+            caminho = resultado["arquivo_relatorio"]
+            st.success(
+                f"Relatorio gravado em {caminho.relative_to(RAIZ).as_posix()} e alertas "
+                f"em {resultado['arquivo_alertas'].relative_to(RAIZ).as_posix()}."
+            )
+            st.download_button(
+                "Baixar relatorio",
+                resultado["relatorio"],
+                file_name=caminho.name,
+                mime="text/markdown",
+            )
+            with st.expander("Ver relatorio", expanded=True):
+                st.markdown(resultado["relatorio"])
 
 
 with aba_pipeline:
