@@ -8,7 +8,7 @@ version = "2.0.0"
 description = "Classificacao de folhas de tomateiro e painel analitico para o agronegocio"
 requires-python = ">=3.10"
 dependencies = [
-    "streamlit>=1.35,<2",
+    "streamlit>=1.37,<2",
     "pandas>=2,<3",
     "numpy>=1.24,<3",
     "opencv-python-headless>=4.8,<5",

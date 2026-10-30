@@ -17,6 +17,7 @@ Rode pela linha de comando com:
 
 import hashlib
 import json
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
@@ -46,6 +47,7 @@ BRONZE = SAIDA / "analises.csv"
 SILVER = SAIDA / "analises_tratadas.csv"
 GOLD = SAIDA / "indicadores.json"
 ALERTAS = SAIDA / automacao.ALERTAS
+CHECKPOINT = SAIDA / "checkpoint.json"
 
 
 def acrescentar_bronze(registros: list[dict]) -> int:
@@ -212,9 +214,33 @@ def ler_camada(caminho: Path) -> pd.DataFrame:
 
 
 def limpar() -> None:
-    """Apaga as tres camadas e os alertas. Usado pelo botao de limpeza do painel."""
-    for camada in (BRONZE, SILVER, GOLD, ALERTAS):
+    """Apaga as tres camadas, os alertas e o checkpoint da ingestao.
+
+    Sem o checkpoint apagado, os arquivos ja lidos nao entrariam de novo.
+    """
+    for camada in (BRONZE, SILVER, GOLD, ALERTAS, CHECKPOINT):
         camada.unlink(missing_ok=True)
+
+
+@contextmanager
+def em_saida(pasta: Path):
+    """Aponta as camadas, os alertas e o checkpoint para outra pasta (demonstracao)."""
+    nomes = ("SAIDA", "BRONZE", "SILVER", "GOLD", "ALERTAS", "CHECKPOINT")
+    anteriores = {nome: globals()[nome] for nome in nomes}
+    pasta = Path(pasta)
+
+    globals().update(
+        SAIDA=pasta,
+        BRONZE=pasta / BRONZE.name,
+        SILVER=pasta / SILVER.name,
+        GOLD=pasta / GOLD.name,
+        ALERTAS=pasta / ALERTAS.name,
+        CHECKPOINT=pasta / CHECKPOINT.name,
+    )
+    try:
+        yield
+    finally:
+        globals().update(anteriores)
 
 
 if __name__ == "__main__":

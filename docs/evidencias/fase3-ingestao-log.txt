@@ -1,0 +1,173 @@
+# Parte 1: monitor ligado (python -m agrovision.ingestao --demo --intervalo 2), lotes chegando
+# em outro terminal (python scripts/gerar_lotes.py --lotes 14 --intervalo 3), seguido de um reenvio
+# do ultimo lote (python scripts/gerar_lotes.py --reenviar).
+
+21:05:09 [Ingestao] Vigiando ...\data\entrada\demonstracao a cada 2s. Ctrl+C para encerrar
+21:05:09 [Ingestao] Sem arquivos novos. Aguardando
+21:05:13 [Ingestao] lote_2026-09-01.csv: 36 linha(s), 36 nova(s), 0 ja processada(s)
+21:05:13 [Ingestao] 36 registro(s) novo(s). Rodando pipeline e regras de decisao
+=== Pipeline AgroVision: Bronze -> Silver -> Gold ===
+[Extract] 36 registro(s) lido(s) de analises.csv
+[Transform] 0 registro(s) descartado(s) na validacao
+[Transform] 36 registro(s) gravado(s) em analises_tratadas.csv
+[Load] Indicadores gravados em indicadores.json
+[Automacao] 3 decisao(oes) gravada(s) em alertas.json e intervencao_2026-10-29_210513.md
+=== Pipeline concluido ===
+21:05:13 [Ingestao] Alertas e relatorio atualizados em ...\data\saida\demonstracao
+21:05:15 [Ingestao] lote_2026-09-02.csv: 36 linha(s), 36 nova(s), 0 ja processada(s)
+21:05:15 [Ingestao] 36 registro(s) novo(s). Rodando pipeline e regras de decisao
+=== Pipeline AgroVision: Bronze -> Silver -> Gold ===
+[Extract] 72 registro(s) lido(s) de analises.csv
+[Transform] 0 registro(s) descartado(s) na validacao
+[Transform] 72 registro(s) gravado(s) em analises_tratadas.csv
+[Load] Indicadores gravados em indicadores.json
+[Automacao] 6 decisao(oes) gravada(s) em alertas.json e intervencao_2026-10-29_210515.md
+=== Pipeline concluido ===
+21:05:15 [Ingestao] Alertas e relatorio atualizados em ...\data\saida\demonstracao
+21:05:17 [Ingestao] Sem arquivos novos. Aguardando
+21:05:20 [Ingestao] lote_2026-09-03.csv: 36 linha(s), 36 nova(s), 0 ja processada(s)
+21:05:20 [Ingestao] 36 registro(s) novo(s). Rodando pipeline e regras de decisao
+=== Pipeline AgroVision: Bronze -> Silver -> Gold ===
+[Extract] 108 registro(s) lido(s) de analises.csv
+[Transform] 0 registro(s) descartado(s) na validacao
+[Transform] 108 registro(s) gravado(s) em analises_tratadas.csv
+[Load] Indicadores gravados em indicadores.json
+[Automacao] 9 decisao(oes) gravada(s) em alertas.json e intervencao_2026-10-29_210520.md
+=== Pipeline concluido ===
+21:05:20 [Ingestao] Alertas e relatorio atualizados em ...\data\saida\demonstracao
+21:05:22 [Ingestao] lote_2026-09-04.csv: 36 linha(s), 36 nova(s), 0 ja processada(s)
+21:05:22 [Ingestao] 36 registro(s) novo(s). Rodando pipeline e regras de decisao
+=== Pipeline AgroVision: Bronze -> Silver -> Gold ===
+[Extract] 144 registro(s) lido(s) de analises.csv
+[Transform] 0 registro(s) descartado(s) na validacao
+[Transform] 144 registro(s) gravado(s) em analises_tratadas.csv
+[Load] Indicadores gravados em indicadores.json
+[Automacao] 12 decisao(oes) gravada(s) em alertas.json e intervencao_2026-10-29_210522.md
+=== Pipeline concluido ===
+21:05:22 [Ingestao] Alertas e relatorio atualizados em ...\data\saida\demonstracao
+21:05:24 [Ingestao] Sem arquivos novos. Aguardando
+21:05:26 [Ingestao] lote_2026-09-05.csv: 36 linha(s), 36 nova(s), 0 ja processada(s)
+21:05:26 [Ingestao] 36 registro(s) novo(s). Rodando pipeline e regras de decisao
+=== Pipeline AgroVision: Bronze -> Silver -> Gold ===
+[Extract] 180 registro(s) lido(s) de analises.csv
+[Transform] 0 registro(s) descartado(s) na validacao
+[Transform] 180 registro(s) gravado(s) em analises_tratadas.csv
+[Load] Indicadores gravados em indicadores.json
+[Automacao] 15 decisao(oes) gravada(s) em alertas.json e intervencao_2026-10-29_210526.md
+=== Pipeline concluido ===
+21:05:26 [Ingestao] Alertas e relatorio atualizados em ...\data\saida\demonstracao
+21:05:28 [Ingestao] lote_2026-09-06.csv: 36 linha(s), 36 nova(s), 0 ja processada(s)
+21:05:28 [Ingestao] 36 registro(s) novo(s). Rodando pipeline e regras de decisao
+=== Pipeline AgroVision: Bronze -> Silver -> Gold ===
+[Extract] 216 registro(s) lido(s) de analises.csv
+[Transform] 0 registro(s) descartado(s) na validacao
+[Transform] 216 registro(s) gravado(s) em analises_tratadas.csv
+[Load] Indicadores gravados em indicadores.json
+[Automacao] 18 decisao(oes) gravada(s) em alertas.json e intervencao_2026-10-29_210528.md
+=== Pipeline concluido ===
+21:05:28 [Ingestao] ALERTA Talhão B 2026-09-06 16.7% R4 PERSISTÊNCIA: Solicitar avaliação agronômica por persistência de folhas doentes.
+21:05:28 [Ingestao] Alertas e relatorio atualizados em ...\data\saida\demonstracao
+21:05:30 [Ingestao] lote_2026-09-07.csv: 36 linha(s), 36 nova(s), 0 ja processada(s)
+21:05:30 [Ingestao] 36 registro(s) novo(s). Rodando pipeline e regras de decisao
+=== Pipeline AgroVision: Bronze -> Silver -> Gold ===
+[Extract] 252 registro(s) lido(s) de analises.csv
+[Transform] 0 registro(s) descartado(s) na validacao
+[Transform] 252 registro(s) gravado(s) em analises_tratadas.csv
+[Load] Indicadores gravados em indicadores.json
+[Automacao] 21 decisao(oes) gravada(s) em alertas.json e intervencao_2026-10-29_210530.md
+=== Pipeline concluido ===
+21:05:30 [Ingestao] ALERTA Talhão B 2026-09-07 8.3% R4 PERSISTÊNCIA: Solicitar avaliação agronômica por persistência de folhas doentes.
+21:05:30 [Ingestao] Alertas e relatorio atualizados em ...\data\saida\demonstracao
+21:05:32 [Ingestao] Sem arquivos novos. Aguardando
+21:05:34 [Ingestao] lote_2026-09-08.csv: 36 linha(s), 36 nova(s), 0 ja processada(s)
+21:05:34 [Ingestao] 36 registro(s) novo(s). Rodando pipeline e regras de decisao
+=== Pipeline AgroVision: Bronze -> Silver -> Gold ===
+[Extract] 288 registro(s) lido(s) de analises.csv
+[Transform] 0 registro(s) descartado(s) na validacao
+[Transform] 288 registro(s) gravado(s) em analises_tratadas.csv
+[Load] Indicadores gravados em indicadores.json
+[Automacao] 24 decisao(oes) gravada(s) em alertas.json e intervencao_2026-10-29_210534.md
+=== Pipeline concluido ===
+21:05:34 [Ingestao] ALERTA Talhão B 2026-09-08 16.7% R4 PERSISTÊNCIA: Solicitar avaliação agronômica por persistência de folhas doentes.
+21:05:34 [Ingestao] Alertas e relatorio atualizados em ...\data\saida\demonstracao
+21:05:36 [Ingestao] lote_2026-09-09.csv: 36 linha(s), 36 nova(s), 0 ja processada(s)
+21:05:36 [Ingestao] 36 registro(s) novo(s). Rodando pipeline e regras de decisao
+=== Pipeline AgroVision: Bronze -> Silver -> Gold ===
+[Extract] 324 registro(s) lido(s) de analises.csv
+[Transform] 0 registro(s) descartado(s) na validacao
+[Transform] 324 registro(s) gravado(s) em analises_tratadas.csv
+[Load] Indicadores gravados em indicadores.json
+[Automacao] 27 decisao(oes) gravada(s) em alertas.json e intervencao_2026-10-29_210537.md
+=== Pipeline concluido ===
+21:05:37 [Ingestao] ALERTA Talhão B 2026-09-09 16.7% R4 PERSISTÊNCIA: Solicitar avaliação agronômica por persistência de folhas doentes.
+21:05:37 [Ingestao] ALERTA Talhão C 2026-09-09 16.7% R4 PERSISTÊNCIA: Solicitar avaliação agronômica por persistência de folhas doentes.
+21:05:37 [Ingestao] Alertas e relatorio atualizados em ...\data\saida\demonstracao
+21:05:39 [Ingestao] Sem arquivos novos. Aguardando
+21:05:41 [Ingestao] lote_2026-09-10.csv: 36 linha(s), 36 nova(s), 0 ja processada(s)
+21:05:41 [Ingestao] 36 registro(s) novo(s). Rodando pipeline e regras de decisao
+=== Pipeline AgroVision: Bronze -> Silver -> Gold ===
+[Extract] 360 registro(s) lido(s) de analises.csv
+[Transform] 0 registro(s) descartado(s) na validacao
+[Transform] 360 registro(s) gravado(s) em analises_tratadas.csv
+[Load] Indicadores gravados em indicadores.json
+[Automacao] 30 decisao(oes) gravada(s) em alertas.json e intervencao_2026-10-29_210541.md
+=== Pipeline concluido ===
+21:05:41 [Ingestao] ALERTA Talhão B 2026-09-10 8.3% R4 PERSISTÊNCIA: Solicitar avaliação agronômica por persistência de folhas doentes.
+21:05:41 [Ingestao] ALERTA Talhão C 2026-09-10 50.0% R5 PRIORIDADE MÁXIMA: Solicitar avaliação agronômica prioritária e plano de controle.
+21:05:41 [Ingestao] Alertas e relatorio atualizados em ...\data\saida\demonstracao
+21:05:43 [Ingestao] lote_2026-09-11.csv: 36 linha(s), 36 nova(s), 0 ja processada(s)
+21:05:43 [Ingestao] 36 registro(s) novo(s). Rodando pipeline e regras de decisao
+=== Pipeline AgroVision: Bronze -> Silver -> Gold ===
+[Extract] 396 registro(s) lido(s) de analises.csv
+[Transform] 0 registro(s) descartado(s) na validacao
+[Transform] 396 registro(s) gravado(s) em analises_tratadas.csv
+[Load] Indicadores gravados em indicadores.json
+[Automacao] 33 decisao(oes) gravada(s) em alertas.json e intervencao_2026-10-29_210543.md
+=== Pipeline concluido ===
+21:05:43 [Ingestao] ALERTA Talhão B 2026-09-11 66.7% R5 PRIORIDADE MÁXIMA: Solicitar avaliação agronômica prioritária e plano de controle.
+21:05:43 [Ingestao] ALERTA Talhão C 2026-09-11 8.3% R4 PERSISTÊNCIA: Solicitar avaliação agronômica por persistência de folhas doentes.
+21:05:43 [Ingestao] Alertas e relatorio atualizados em ...\data\saida\demonstracao
+21:05:45 [Ingestao] Sem arquivos novos. Aguardando
+21:05:47 [Ingestao] lote_2026-09-12.csv: 36 linha(s), 36 nova(s), 0 ja processada(s)
+21:05:47 [Ingestao] 36 registro(s) novo(s). Rodando pipeline e regras de decisao
+=== Pipeline AgroVision: Bronze -> Silver -> Gold ===
+[Extract] 432 registro(s) lido(s) de analises.csv
+[Transform] 0 registro(s) descartado(s) na validacao
+[Transform] 432 registro(s) gravado(s) em analises_tratadas.csv
+[Load] Indicadores gravados em indicadores.json
+[Automacao] 36 decisao(oes) gravada(s) em alertas.json e intervencao_2026-10-29_210547.md
+=== Pipeline concluido ===
+21:05:47 [Ingestao] ALERTA Talhão B 2026-09-12 58.3% R5 PRIORIDADE MÁXIMA: Solicitar avaliação agronômica prioritária e plano de controle.
+21:05:47 [Ingestao] Alertas e relatorio atualizados em ...\data\saida\demonstracao
+21:05:49 [Ingestao] lote_2026-09-13.csv: 36 linha(s), 36 nova(s), 0 ja processada(s)
+21:05:49 [Ingestao] 36 registro(s) novo(s). Rodando pipeline e regras de decisao
+=== Pipeline AgroVision: Bronze -> Silver -> Gold ===
+[Extract] 468 registro(s) lido(s) de analises.csv
+[Transform] 0 registro(s) descartado(s) na validacao
+[Transform] 468 registro(s) gravado(s) em analises_tratadas.csv
+[Load] Indicadores gravados em indicadores.json
+[Automacao] 39 decisao(oes) gravada(s) em alertas.json e intervencao_2026-10-29_210549.md
+=== Pipeline concluido ===
+21:05:49 [Ingestao] ALERTA Talhão B 2026-09-13 41.7% R5 PRIORIDADE MÁXIMA: Solicitar avaliação agronômica prioritária e plano de controle.
+21:05:49 [Ingestao] Alertas e relatorio atualizados em ...\data\saida\demonstracao
+21:05:51 [Ingestao] lote_2026-09-14.csv: 36 linha(s), 36 nova(s), 0 ja processada(s)
+21:05:51 [Ingestao] 36 registro(s) novo(s). Rodando pipeline e regras de decisao
+=== Pipeline AgroVision: Bronze -> Silver -> Gold ===
+[Extract] 504 registro(s) lido(s) de analises.csv
+[Transform] 0 registro(s) descartado(s) na validacao
+[Transform] 504 registro(s) gravado(s) em analises_tratadas.csv
+[Load] Indicadores gravados em indicadores.json
+[Automacao] 42 decisao(oes) gravada(s) em alertas.json e intervencao_2026-10-29_210551.md
+=== Pipeline concluido ===
+21:05:51 [Ingestao] ALERTA Talhão B 2026-09-14 83.3% R5 PRIORIDADE MÁXIMA: Solicitar avaliação agronômica prioritária e plano de controle.
+21:05:51 [Ingestao] ALERTA Talhão C 2026-09-14 33.3% R3 CRÍTICO: Investigar possível infestação e intensificar inspeções.
+21:05:51 [Ingestao] Alertas e relatorio atualizados em ...\data\saida\demonstracao
+21:05:53 [Ingestao] Sem arquivos novos. Aguardando
+21:05:57 [Ingestao] lote_2026-09-14_reenvio.csv: 36 linha(s), 0 nova(s), 36 ja processada(s)
+21:05:58 [Ingestao] Nenhum registro novo. Pipeline e automacao nao foram acionados
+21:06:00 [Ingestao] Sem arquivos novos. Aguardando
+
+# Parte 2: o processo foi encerrado e iniciado de novo (python -m agrovision.ingestao --demo --uma-vez).
+# O checkpoint evita reler os 15 arquivos.
+
+21:07:08 [Ingestao] Nenhum arquivo novo. 15 arquivo(s) ja constam no checkpoint

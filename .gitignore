@@ -17,6 +17,7 @@ __pycache__/
 
 # Dados gerados pelo pipeline em tempo de execucao
 data/saida/
+data/entrada/
 
 # Editores e sistema operacional
 .vscode/
