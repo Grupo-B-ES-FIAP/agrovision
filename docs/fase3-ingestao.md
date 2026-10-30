@@ -258,6 +258,15 @@ A aba Entrada automatizada do Streamlit mostra o mesmo fluxo:
 - Contadores de arquivos na pasta, aguardando leitura, rejeitados e registros na Bronze.
 - Tabela dos arquivos com a situação no checkpoint, cartões da situação atual de cada talhão e o log da ingestão.
 
+Passo a passo na demonstração:
+
+1. Suba o painel com `streamlit run src/agrovision/app.py` e abra a aba Entrada automatizada, com a fonte em Demonstração.
+2. Clique em **Entregar próximo lote**. O arquivo aparece em "Aguardando leitura".
+3. Ligue **Monitorar a pasta automaticamente**. Em poucos segundos o lote é lido, a Bronze passa a ter 36 registros e aparecem os cartões por talhão e o log.
+4. Entregue mais lotes. A cada um, o monitor processa sozinho e os cartões mudam conforme as regras disparam.
+5. Clique em **Reenviar último lote**. O arquivo é lido, mas a Bronze não muda e o log mostra que nenhum registro era novo.
+6. Para repetir, desligue o monitor e clique em **Reiniciar a demonstração**.
+
 ## Como rodar
 
 Em dois terminais, com o projeto instalado.
