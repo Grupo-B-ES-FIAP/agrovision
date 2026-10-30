@@ -33,6 +33,7 @@ DEMO = RAIZ / "data" / "exemplos" / "analises_demo.csv"
 
 ALERTAS = "alertas.json"
 RELATORIOS = "relatorios"
+DEMONSTRACAO = "demonstracao"
 
 
 def _linha(*celulas) -> str:
@@ -146,7 +147,7 @@ def main(argumentos=None) -> dict:
     print(f"[Automacao] {len(registros)} registro(s) lido(s) de {origem.name}")
 
     # A demonstracao grava em uma subpasta para nao sobrescrever os alertas reais.
-    destino = pipeline.SAIDA / "demonstracao" if opcoes.demo else pipeline.SAIDA
+    destino = pipeline.SAIDA / DEMONSTRACAO if opcoes.demo else pipeline.SAIDA
     resultado = executar(registros, destino, fonte)
 
     for a in resultado["situacao"]:

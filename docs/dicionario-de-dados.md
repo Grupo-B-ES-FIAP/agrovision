@@ -111,6 +111,13 @@ Arquivo: `models/metrics.json`
 | `acuracia` | Acurácia no conjunto de teste, de 0 a 1 |
 | `relatorio_por_classe` | Precisão, revocação e F1 por categoria |
 
+## Arquivos de entrada da ingestão
+
+Pasta: `data/entrada`. Cada arquivo `.csv` ou `.json` tem as mesmas colunas da
+camada Bronze. A ingestão lê só os registros novos e guarda o que já leu em
+`data/saida/checkpoint.json`. O dicionário completo, com exemplos de registro e
+de checkpoint, está em [fase3-ingestao.md](fase3-ingestao.md).
+
 ## Exportações do painel
 
 O painel gera dois arquivos sob demanda, com os registros que estão na tela

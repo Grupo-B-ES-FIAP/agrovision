@@ -11,8 +11,8 @@ talhão. O painel mostra onde o problema está crescendo. Com isso, a aplicaçã
 de defensivo vai para o talhão que precisa, e não para a fazenda inteira.
 
 Projeto acadêmico AgroSmart, FIAP. Três sprints: visão computacional na Fase 1,
-organização e visualização dos dados na Fase 2, regras de decisão e automação
-na Fase 3.
+organização e visualização dos dados na Fase 2, regras de decisão, automação e
+entrada automatizada de dados na Fase 3.
 
 ![Painel do AgroVision](docs/img/painel.jpg)
 
@@ -23,6 +23,7 @@ na Fase 3.
 | Análise de folhas | Recebe uma ou mais imagens, com o local e a data da coleta. Classifica cada folha como saudável ou doente, com o percentual de confiança |
 | Painel | Imagens analisadas, percentual de saudáveis e doentes, confiança média, contagem por talhão e evolução por dia. Filtros de período, local e classificação |
 | Inteligência no campo | Aplica as regras de decisão da Fase 3 por talhão e dia. Mostra o nível atual de cada talhão, a ação recomendada, o histórico de decisões e gera o relatório de intervenção |
+| Entrada automatizada | Vigia a pasta de entrada, lê só os registros novos e dispara o pipeline e as regras. Mostra os arquivos, o checkpoint, os alertas e o log. Na demonstração, entrega e reenvia lotes |
 | Pipeline de dados | Mostra as três camadas de dados, permite reprocessar e exportar os resultados em CSV e JSON |
 
 ## Como rodar
@@ -82,7 +83,7 @@ nuvem. Para escala, o mesmo fluxo existe em Apache Spark no notebook
 [notebooks/pipeline_spark.py](notebooks/pipeline_spark.py), com tabelas Delta e
 agendamento por Job no Databricks.
 
-## Fase 3: decisão e automação
+## Fase 3: decisão, automação e entrada de dados
 
 As regras de decisão estão em
 [Fase3_Logica_Decisao/Regras_e_Fluxograma.pdf](Fase3_Logica_Decisao/Regras_e_Fluxograma.pdf).
@@ -90,6 +91,12 @@ A cada análise nova, o pipeline aplica as regras e grava
 `data/saida/alertas.json` e um relatório de intervenção em
 `data/saida/relatorios/`. O funcionamento e as capturas de tela estão em
 [docs/fase3-automacao.md](docs/fase3-automacao.md).
+
+Os dados novos entram sem intervenção manual. Um monitor vigia a pasta
+`data/entrada`, lê só os registros que ainda não foram vistos e dispara o
+pipeline e as regras. O modelo é micro-batch, com checkpoint do que já foi lido.
+A justificativa, o diagrama, o dicionário de dados e o log de execução estão em
+[docs/fase3-ingestao.md](docs/fase3-ingestao.md).
 
 ![Aba Inteligência no campo](docs/img/fase3-situacao-demo.png)
 
@@ -120,14 +127,15 @@ resultado é sempre o mesmo.
 ## Estrutura do projeto
 
 ```
-src/agrovision/      aplicativo, pipeline ETL, visão computacional, regras e automação
+src/agrovision/      aplicativo, pipeline ETL, visão computacional, regras, automação e ingestão
 Fase3_Logica_Decisao/  regras de decisão da Fase 3 (PDF e fluxograma)
-scripts/             treino, importação em lote e geração da base de demonstração
-tests/               testes do pipeline, da visão, do modelo, da exportação e das regras
+scripts/             treino, importação em lote, base de demonstração e produtor de lotes
+tests/               testes do pipeline, da visão, do modelo, da exportação, das regras e da ingestão
 notebooks/           pipeline em Apache Spark para o Databricks
 data/dataset/        200 imagens de folhas, saudáveis e doentes
 data/exemplos/       base de demonstração do painel
-data/saida/          camadas Bronze, Silver e Gold, geradas em tempo de execução
+data/entrada/        arquivos que chegam para a ingestão, gerados em tempo de execução
+data/saida/          camadas Bronze, Silver e Gold e checkpoint, gerados em tempo de execução
 models/              modelo treinado e métricas do treino
 docs/                arquitetura, dicionário de dados e material dos vídeos
 ```
@@ -144,6 +152,10 @@ python -m agrovision.pipeline
 # Gerar alertas e relatório de intervenção
 python -m agrovision.automacao          # dados reais
 python -m agrovision.automacao --demo   # base de demonstração
+
+# Ingestão automatizada: vigia data/entrada e processa só o que é novo
+python -m agrovision.ingestao --demo    # base de demonstração (outro terminal:)
+python scripts/gerar_lotes.py --lotes 5 --intervalo 10
 
 # Treinar o modelo de novo
 python scripts/treinar_modelo.py
@@ -165,6 +177,7 @@ O GitHub Actions roda os dois comandos em cada push e em cada pull request.
 
 - [Arquitetura e camadas de dados](docs/arquitetura.md)
 - [Fase 3: automação das ações](docs/fase3-automacao.md)
+- [Fase 3: integração com dados (entrada automatizada)](docs/fase3-ingestao.md)
 - [Dicionário de dados](docs/dicionario-de-dados.md)
 - [Origem do dataset](data/README.md)
 - [Relatório técnico da Fase 1](docs/relatorio-tecnico-fase1.pdf)

@@ -5,13 +5,16 @@ Rode com:
 """
 
 import hashlib
+import io
+import shutil
+from contextlib import redirect_stdout
 from datetime import date
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 
-from agrovision import automacao, pipeline
+from agrovision import automacao, ingestao, pipeline, produtor
 from agrovision.decisao import LIMIAR_CRITICO, REGRAS_DE_INTERVENCAO, avaliar, situacao_atual
 from agrovision.esquema import (
     ACURACIA,
@@ -92,8 +95,14 @@ def preparar(registros: list[dict]) -> pd.DataFrame:
 st.title("🌱 AgroVision")
 st.caption("Classificacao e monitoramento de folhas de tomateiro | Fase 3")
 
-aba_analise, aba_painel, aba_decisao, aba_pipeline = st.tabs(
-    ["🔬 Analise de folhas", "📊 Painel", "🧠 Inteligencia no campo", "🔄 Pipeline de dados"]
+aba_analise, aba_painel, aba_decisao, aba_pipeline, aba_entrada = st.tabs(
+    [
+        "🔬 Analise de folhas",
+        "📊 Painel",
+        "🧠 Inteligencia no campo",
+        "🔄 Pipeline de dados",
+        "📥 Entrada automatizada",
+    ]
 )
 
 
@@ -440,3 +449,143 @@ with aba_pipeline:
             f"Arquivos em data/saida/: {pipeline.BRONZE.name}, "
             f"{pipeline.SILVER.name}, {pipeline.GOLD.name}"
         )
+
+
+INTERVALO_MONITOR = 3
+LINHAS_DE_LOG = 150
+
+
+def rodar_ingestao(pasta: Path, saida: Path) -> None:
+    """Processa a pasta uma vez e guarda o log da execucao na sessao."""
+    registro = io.StringIO()
+    with redirect_stdout(registro), pipeline.em_saida(saida):
+        ingestao.processar(pasta)
+
+    linhas = [linha for linha in registro.getvalue().splitlines() if "[Ingestao]" in linha]
+    if linhas:
+        log = st.session_state.setdefault(f"log_{saida}", [])
+        log.extend(linhas)
+        del log[:-LINHAS_DE_LOG]
+
+
+def ler_estado(pasta: Path, saida: Path) -> dict:
+    """Checkpoint, arquivos pendentes, tamanho da Bronze e decisoes de uma fonte.
+
+    As decisoes saem da Silver da propria fonte, e nao do alertas.json, que o botao
+    da aba Inteligencia tambem grava na pasta da demonstracao.
+    """
+    with pipeline.em_saida(saida):
+        checkpoint = ingestao.ler_checkpoint()
+        pendentes = {arquivo.name for arquivo in ingestao.pendentes(pasta, checkpoint)}
+        bronze = len(pipeline.ler_camada(pipeline.BRONZE))
+        alertas = avaliar(pipeline.ler_camada(pipeline.SILVER).to_dict("records"))
+
+    return {
+        "checkpoint": checkpoint["arquivos"],
+        "pendentes": pendentes,
+        "arquivos": [arquivo.name for arquivo in ingestao.listar_arquivos(pasta)],
+        "bronze": bronze,
+        "alertas": alertas,
+    }
+
+
+@st.fragment(run_every=INTERVALO_MONITOR)
+def exibir_entrada(pasta: Path, saida: Path, demonstracao: bool) -> None:
+    """Estado da entrada automatizada. Atualiza sozinho a cada INTERVALO_MONITOR s."""
+    if st.session_state.get("monitorar"):
+        rodar_ingestao(pasta, saida)
+
+    st.markdown("**Acoes**")
+    botoes = st.columns(4 if demonstracao else 1)
+    if botoes[0].button("Processar a pasta agora", type="primary", use_container_width=True):
+        rodar_ingestao(pasta, saida)
+
+    if demonstracao:
+        try:
+            if botoes[1].button("Entregar proximo lote", use_container_width=True):
+                produtor.entregar(pasta, aviso=lambda _: None)
+            if botoes[2].button("Reenviar ultimo lote", use_container_width=True):
+                produtor.reenviar(pasta)
+        except ValueError as erro:
+            st.warning(str(erro))
+
+        if botoes[3].button("Reiniciar a demonstracao", use_container_width=True):
+            produtor.reiniciar(pasta)
+            shutil.rmtree(saida, ignore_errors=True)
+            st.session_state.pop(f"log_{saida}", None)
+
+    estado = ler_estado(pasta, saida)
+    checkpoint = estado["checkpoint"]
+    rejeitados = sum(item["status"] == ingestao.REJEITADO for item in checkpoint.values())
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Arquivos na pasta", len(estado["arquivos"]))
+    m2.metric("Aguardando leitura", len(estado["pendentes"]))
+    m3.metric("Rejeitados", rejeitados)
+    m4.metric("Registros na Bronze", estado["bronze"])
+
+    st.subheader("Arquivos e checkpoint")
+    if estado["arquivos"]:
+        tabela = pd.DataFrame(
+            [
+                {
+                    "arquivo": nome,
+                    "situacao": "pendente"
+                    if nome in estado["pendentes"]
+                    else checkpoint[nome]["status"],
+                    "linhas": checkpoint.get(nome, {}).get("linhas"),
+                    "registros novos": checkpoint.get(nome, {}).get("novos"),
+                    "lido em": checkpoint.get(nome, {}).get("processado_em"),
+                    "motivo": checkpoint.get(nome, {}).get("motivo"),
+                }
+                for nome in estado["arquivos"]
+            ]
+        )
+        st.dataframe(tabela, use_container_width=True, hide_index=True)
+    else:
+        st.info("A pasta de entrada esta vazia. Aguardando dados.")
+
+    st.subheader("Situacao atual por talhao")
+    if estado["alertas"]:
+        atual = situacao_atual(estado["alertas"])
+        cartoes = st.columns(min(len(atual), 3))
+        for i, alerta in enumerate(atual):
+            with cartoes[i % len(cartoes)]:
+                CAIXA_POR_REGRA[alerta["regra"]](
+                    f"**{alerta['talhao']}** | {alerta['data']}\n\n"
+                    f"{alerta['nivel']} ({alerta['regra']}): "
+                    f"{alerta['percentual_doentes']:.1f}% de folhas doentes\n\n"
+                    f"{alerta['recomendacao']}"
+                )
+    else:
+        st.info("Ainda nao ha alertas. Eles aparecem quando chega o primeiro lote.")
+
+    st.subheader("Log da ingestao")
+    log = st.session_state.get(f"log_{saida}", [])
+    st.code("\n".join(log[-40:]) or "Sem eventos nesta sessao.", language="text")
+
+
+with aba_entrada:
+    st.write(
+        "O sistema vigia a pasta de entrada, le so os registros ainda nao vistos e "
+        "dispara o pipeline e as regras de decisao."
+    )
+    st.caption(
+        "Modelo micro-batch com checkpoint do que ja foi lido. Um arquivo reenviado nao "
+        "gera alerta nem relatorio de novo. A demonstracao grava em "
+        "data/saida/demonstracao e nunca mistura registros simulados com os reais."
+    )
+
+    escolha, chave = st.columns([2, 1])
+    fonte_entrada = escolha.radio(
+        "Fonte", ["Demonstracao", "Dados reais"], horizontal=True, key="fonte_entrada"
+    )
+    chave.toggle("Monitorar a pasta automaticamente (a cada 3 s)", key="monitorar")
+    entrada_demo = fonte_entrada == "Demonstracao"
+    pasta_entrada = ingestao.ENTRADA_DEMO if entrada_demo else ingestao.ENTRADA
+    saida_entrada = pipeline.SAIDA / automacao.DEMONSTRACAO if entrada_demo else pipeline.SAIDA
+
+    st.caption(f"Pasta vigiada: {pasta_entrada.relative_to(RAIZ).as_posix()}")
+
+    pasta_entrada.mkdir(parents=True, exist_ok=True)
+    exibir_entrada(pasta_entrada, saida_entrada, entrada_demo)
