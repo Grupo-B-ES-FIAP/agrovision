@@ -113,7 +113,9 @@ As regras R1 a R5 de folhas doentes continuam as da Fase 3.
 
 ## Como executar
 
-Para rodar o broker e os processos Python no seu computador:
+Com Docker, o ambiente completo sobe com `docker compose up --build`
+(veja [fase4-docker.md](fase4-docker.md)). Para rodar só o broker e os processos
+Python no seu computador:
 
 ```powershell
 docker compose -f streaming/broker.yml up -d

@@ -119,6 +119,18 @@ python -m agrovision.streaming.produtor --ticks 32 --intervalo 1 --ataque-a-cada
 Sem Docker, a aba **Streaming** do painel tem o botão **Simular**, que roda o
 fluxo completo em memória.
 
+## Fase 4: contêineres
+
+Um único comando sobe o broker, o produtor, o consumidor e o painel:
+
+```bash
+docker compose up --build
+```
+
+Painel em http://localhost:8501 (aba **Streaming**) e console do broker em
+http://localhost:8080. Serviços, decisões do Dockerfile e o que mostrar nos
+prints estão em [docs/fase4-docker.md](docs/fase4-docker.md).
+
 ## Desempenho do modelo
 
 | Métrica | Valor |
@@ -149,6 +161,8 @@ resultado é sempre o mesmo.
 src/agrovision/      aplicativo, pipeline ETL, visão computacional, regras, automação e ingestão
 src/agrovision/streaming/  eventos, produtor, consumidor e transporte Kafka (Fase 4)
 streaming/           tópicos do broker e compose só do broker
+Dockerfile           imagem única do painel, produtor e consumidor
+docker-compose.yml   ambiente completo em contêineres
 Fase3_Logica_Decisao/  regras de decisão da Fase 3 (PDF e fluxograma)
 scripts/             treino, importação em lote, base de demonstração e produtor de lotes
 tests/               testes do pipeline, da visão, do modelo, da exportação, das regras e da ingestão
@@ -203,6 +217,7 @@ O GitHub Actions roda os dois comandos em cada push e em cada pull request.
 - [Fase 3: automação das ações](docs/fase3-automacao.md)
 - [Fase 3: integração com dados (entrada automatizada)](docs/fase3-ingestao.md)
 - [Fase 4: pipeline com streaming](docs/fase4-streaming.md)
+- [Fase 4: containerização com Docker](docs/fase4-docker.md)
 - [Dicionário de dados](docs/dicionario-de-dados.md)
 - [Origem do dataset](data/README.md)
 - [Relatório técnico da Fase 1](docs/relatorio-tecnico-fase1.pdf)
