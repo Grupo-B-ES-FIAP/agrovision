@@ -15,7 +15,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from agrovision import automacao, diagramas, ingestao, pipeline, produtor
+from agrovision import automacao, canvas, diagramas, ingestao, pipeline, produtor
 from agrovision.decisao import LIMIAR_CRITICO, REGRAS_DE_INTERVENCAO, avaliar, situacao_atual
 from agrovision.esquema import (
     ACURACIA,
@@ -98,7 +98,8 @@ def preparar(registros: list[dict]) -> pd.DataFrame:
 st.title("🌱 AgroVision")
 st.caption("Classificacao e monitoramento de folhas de tomateiro | Fase 4")
 
-aba_analise, aba_painel, aba_decisao, aba_pipeline, aba_entrada, aba_stream, aba_docker = st.tabs(
+(aba_analise, aba_painel, aba_decisao, aba_pipeline, aba_entrada, aba_stream,
+ aba_docker, aba_negocio) = st.tabs(
     [
         "🔬 Analise de folhas",
         "📊 Painel",
@@ -107,6 +108,7 @@ aba_analise, aba_painel, aba_decisao, aba_pipeline, aba_entrada, aba_stream, aba
         "📥 Entrada automatizada",
         "📡 Streaming",
         "🐳 Arquitetura e Docker",
+        "💼 Modelo de negócio",
     ]
 )
 
@@ -725,3 +727,47 @@ with aba_docker:
         "docker compose down -v             # derruba e apaga os dados",
     ]
     st.code("\n".join(comandos), language="bash")
+
+
+def desenhar_bloco(coluna, chave: str) -> None:
+    bloco = canvas.BLOCOS[chave]
+    titulo = bloco["titulo"].upper()
+    with coluna.container(border=True):
+        st.markdown(f":green[**{titulo}**]" if chave == "proposta" else f"**{titulo}**")
+        st.markdown("\n".join(f"- {item}" for item in bloco["itens"]))
+
+
+with aba_negocio:
+    st.write(
+        "O AgroSmart como negocio: quem paga, o que recebe, como chega ate o produtor e "
+        "quanto custa entregar. Cada bloco parte do que o sistema ja faz."
+    )
+    st.subheader("Business Model Canvas")
+    st.caption("(H) = hipotese a validar com o mercado.")
+    for pesos, colunas in canvas.DISPOSICAO:
+        for coluna, chaves in zip(st.columns(pesos), colunas, strict=True):
+            for chave in chaves:
+                desenhar_bloco(coluna, chave)
+
+    st.subheader("Canvas da Proposta de Valor")
+    st.caption("Lado do cliente (tarefas, dores, ganhos) e lado do produto (o que oferecemos).")
+    blocos = list(canvas.PROPOSTA_DE_VALOR.items())
+    for linha in (blocos[:3], blocos[3:]):
+        for coluna, (titulo, itens) in zip(st.columns(3), linha, strict=True):
+            with coluna.container(border=True):
+                st.markdown(f"**{titulo}**")
+                st.markdown("\n".join(f"- {item}" for item in itens))
+
+    st.subheader("Hipoteses a validar")
+    st.caption(
+        "Tudo o que depende do mercado e uma hipotese, nao um fato. Cada uma tem um teste "
+        "e um indicador de sucesso."
+    )
+    st.dataframe(
+        pd.DataFrame(canvas.HIPOTESES, columns=["Hipotese", "Como validar", "Indicador"]),
+        hide_index=True,
+        use_container_width=True,
+    )
+
+    st.subheader("Concorrencia e substitutos")
+    st.markdown("\n".join(f"- {item}" for item in canvas.CONCORRENCIA))
