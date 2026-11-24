@@ -1,0 +1,100 @@
+# AgroVision, Fase 4: docker compose up --build
+# Painel em localhost:8501 e console do broker em localhost:8080
+
+x-agrovision: &agrovision
+  image: agrovision:fase4
+  build: .
+  environment:
+    KAFKA_BROKER: redpanda:29092
+    AGROVISION_SEGREDO: ${AGROVISION_SEGREDO:-agrovision-dev}
+  networks: [agrovision]
+
+services:
+  # 29092 para os conteineres, 9092 para o seu computador
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.7
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --memory=512M
+      - --kafka-addr=interno://0.0.0.0:29092,externo://0.0.0.0:9092
+      - --advertise-kafka-addr=interno://redpanda:29092,externo://localhost:9092
+    ports:
+      - "9092:9092"
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health", "--exit-when-healthy"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+    networks: [agrovision]
+
+  console:
+    image: docker.redpanda.com/redpandadata/console:v2.8.5
+    environment:
+      KAFKA_BROKERS: redpanda:29092
+    ports:
+      - "8080:8080"
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    networks: [agrovision]
+
+  # Cria os topicos de streaming/topicos.json e encerra
+  topicos:
+    <<: *agrovision
+    command: ["python", "-m", "agrovision.streaming.transporte"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    restart: "no"
+
+  consumidor:
+    <<: *agrovision
+    command: ["python", "-m", "agrovision.streaming.consumidor", "--demo"]
+    volumes:
+      - saida:/app/data/saida
+    depends_on:
+      topicos:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # Um ataque a cada 8 rodadas. Para repetir: docker compose restart produtor
+  produtor:
+    <<: *agrovision
+    command:
+      - python
+      - -m
+      - agrovision.streaming.produtor
+      - --ticks=40
+      - --intervalo=2
+      - --ataque-a-cada=8
+    depends_on:
+      topicos:
+        condition: service_completed_successfully
+      consumidor:
+        condition: service_started
+    restart: "no"
+
+  dashboard:
+    <<: *agrovision
+    ports:
+      - "8501:8501"
+    volumes:
+      - saida:/app/data/saida
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8501/_stcore/health')"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+    depends_on:
+      - consumidor
+    restart: unless-stopped
+
+volumes:
+  saida:
+
+networks:
+  agrovision:

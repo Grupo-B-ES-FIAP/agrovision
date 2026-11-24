@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from agrovision.streaming import eventos, produtor
+from agrovision.streaming import eventos, produtor, transporte
 from agrovision.streaming.consumidor import Consumidor
 from agrovision.streaming.eventos import ANALISE, SENSOR, EventoInvalido
 from agrovision.streaming.transporte import TransporteMemoria
@@ -138,3 +138,8 @@ def test_demo_roda_sem_broker_e_grava_o_estado(camadas):
     assert consumidor.contagem["rejeitados"] == 2
     estado = camadas.SAIDA / "demonstracao" / "streaming_estado.json"
     assert json.loads(estado.read_text(encoding="utf-8"))["contagem"]["aceitos"] == 72
+
+
+def test_broker_ativo_e_falso_para_porta_fechada():
+    assert transporte.broker_ativo("localhost:1", espera=0.2) is False
+    assert transporte.broker_ativo("endereco-invalido", espera=0.2) is False

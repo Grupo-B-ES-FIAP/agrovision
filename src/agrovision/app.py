@@ -37,6 +37,7 @@ from agrovision.exportacao import gerar_csv, gerar_json
 from agrovision.modelo import carregar as carregar_modelo
 from agrovision.modelo import prever
 from agrovision.streaming import demo as demo_streaming
+from agrovision.streaming import transporte
 from agrovision.vision import de_bytes
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -97,7 +98,7 @@ def preparar(registros: list[dict]) -> pd.DataFrame:
 st.title("🌱 AgroVision")
 st.caption("Classificacao e monitoramento de folhas de tomateiro | Fase 4")
 
-aba_analise, aba_painel, aba_decisao, aba_pipeline, aba_entrada, aba_stream = st.tabs(
+aba_analise, aba_painel, aba_decisao, aba_pipeline, aba_entrada, aba_stream, aba_docker = st.tabs(
     [
         "🔬 Analise de folhas",
         "📊 Painel",
@@ -105,6 +106,7 @@ aba_analise, aba_painel, aba_decisao, aba_pipeline, aba_entrada, aba_stream = st
         "🔄 Pipeline de dados",
         "📥 Entrada automatizada",
         "📡 Streaming",
+        "🐳 Arquitetura e Docker",
     ]
 )
 
@@ -678,3 +680,48 @@ with aba_stream:
 
     st.divider()
     exibir_streaming(pipeline.SAIDA / automacao.DEMONSTRACAO / "streaming_estado.json")
+
+
+SERVICOS = pd.DataFrame(
+    [
+        ("redpanda", "Broker Kafka", "9092", "Recebe e entrega os eventos"),
+        ("console", "Interface web do broker", "8080", "Mostra topicos e mensagens"),
+        ("topicos", "Tarefa unica", "-", "Cria os 4 topicos e encerra"),
+        ("produtor", "Python", "-", "Simula sensores e cameras, com ataques"),
+        ("consumidor", "Python", "-", "Valida, roda o pipeline e as regras, gera alertas"),
+        ("dashboard", "Streamlit", "8501", "Este painel"),
+    ],
+    columns=["Servico", "Tecnologia", "Porta", "Funcao"],
+)
+
+with aba_docker:
+    st.write(
+        "A solucao roda em contêineres Docker, orquestrados por um unico `docker-compose.yml`. "
+        "Uma imagem Python serve ao painel, ao produtor e ao consumidor, cada um com o seu comando."
+    )
+    st.graphviz_chart(diagramas.ARQUITETURA_DOCKER, use_container_width=True)
+
+    st.subheader("Servicos")
+    st.dataframe(SERVICOS, hide_index=True, use_container_width=True)
+
+    st.subheader("Estado do ambiente")
+    servidor = transporte.broker()
+    colunas = st.columns(2)
+    colunas[0].metric("Endereco do broker", servidor)
+    if transporte.broker_ativo(servidor):
+        colunas[1].success("Broker Kafka acessivel: o streaming real esta disponivel.")
+    else:
+        colunas[1].info(
+            "Broker nao encontrado neste ambiente. Com `docker compose up` ele sobe sozinho. "
+            "A aba Streaming tem a simulacao sem broker."
+        )
+
+    st.subheader("Como executar")
+    comandos = [
+        "docker compose up --build          # sobe tudo",
+        "docker compose ps                  # estado dos servicos",
+        "docker compose logs -f consumidor  # acompanha a validacao",
+        "docker compose restart produtor    # repete a simulacao",
+        "docker compose down -v             # derruba e apaga os dados",
+    ]
+    st.code("\n".join(comandos), language="bash")

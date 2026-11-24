@@ -5,6 +5,7 @@
 
 import json
 import os
+import socket
 from collections import defaultdict
 from pathlib import Path
 
@@ -17,6 +18,16 @@ GRUPO = "agrovision-consumidor"
 
 def broker() -> str:
     return os.environ.get("KAFKA_BROKER", BROKER_PADRAO)
+
+
+def broker_ativo(servidor: str | None = None, espera: float = 1.0) -> bool:
+    #Teste de porta, sem depender do kafka-python
+    host, _, porta = (servidor or broker()).rpartition(":")
+    try:
+        with socket.create_connection((host or "localhost", int(porta)), timeout=espera):
+            return True
+    except (OSError, ValueError):
+        return False
 
 
 class TransporteMemoria:

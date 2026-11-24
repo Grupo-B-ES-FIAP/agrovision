@@ -24,3 +24,17 @@ jobs:
 
       - name: Testes
         run: pytest -q
+
+  docker:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validar o docker-compose.yml
+        run: docker compose config -q
+
+      - name: Construir a imagem
+        run: docker build -t agrovision:fase4 .
+
+      - name: Conferir que o pacote importa dentro do conteiner
+        run: docker run --rm agrovision:fase4 python -c "import agrovision.streaming.consumidor"
