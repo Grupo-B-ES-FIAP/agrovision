@@ -1,0 +1,13 @@
+Este é o AgroSmart, do grupo B: Alvaro, Christian, Filipe e Isabela. Nas fases anteriores construímos a tecnologia: um sistema que classifica folhas de tomateiro e organiza os dados por talhão. Agora mostramos como isso vira um negócio.
+
+O problema é conhecido de quem planta. A inspeção é feita a pé, é lenta e depende do olho de cada pessoa. A doença é percebida tarde, depois de se espalhar. E sem saber onde ela está, o produtor aplica defensivo na fazenda inteira. Custa caro e desperdiça produto.
+
+A nossa proposta de valor é descobrir cedo e agir só onde precisa. A foto da folha vira diagnóstico na hora. Sensores de solo e a leitura das folhas chegam em tempo real, passam por um broker Kafka e geram alertas por talhão: umidade crítica, doença persistente, prioridade máxima. Cada alerta traz a ação recomendada. E os dados são assinados, então o produtor pode confiar no que recebe.
+
+Quem paga? Começamos por pequenos e médios produtores de hortifrúti, a partir do tomate, e por cooperativas, que contratam para os cooperados. Agrônomos de campo são usuários e multiplicadores. Chegamos até eles pelo que já existe: cooperativas, revendas de insumos, dias de campo e o WhatsApp, que é o canal que o produtor já usa.
+
+A receita vem de assinatura mensal por área monitorada, licença para cooperativas e kit de sensores com instalação. Esses valores são hipóteses que vamos testar. Os custos são a equipe e a manutenção do modelo, que são fixos, e a nuvem e o broker, que crescem com o número de eventos e a área monitorada.
+
+Nossos recursos principais são o modelo de visão, a plataforma de streaming em contêineres e as regras de decisão. Dependemos de parceiros: cooperativas, fabricantes de sensores e agrônomos que validem as regras.
+
+O Canvas é um conjunto de hipóteses, não de certezas. O modelo acerta 95 por cento no conjunto de teste, mas ainda precisamos provar no campo. O próximo passo é um piloto em uma cooperativa, comparando com a avaliação de um agrônomo e medindo quanto defensivo foi economizado. Obrigado.

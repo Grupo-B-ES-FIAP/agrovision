@@ -10,9 +10,10 @@ quais apresentam sinais de doença. Cada análise fica guardada com data e
 talhão. O painel mostra onde o problema está crescendo. Com isso, a aplicação
 de defensivo vai para o talhão que precisa, e não para a fazenda inteira.
 
-Projeto acadêmico AgroSmart, FIAP. Três sprints: visão computacional na Fase 1,
+Projeto acadêmico AgroSmart, FIAP. Quatro fases: visão computacional na Fase 1,
 organização e visualização dos dados na Fase 2, regras de decisão, automação e
-entrada automatizada de dados na Fase 3, streaming de eventos, contêineres e modelo de negócio na Fase 4.
+entrada automatizada de dados na Fase 3, e streaming de eventos, contêineres e
+modelo de negócio na Fase 4.
 
 ![Painel do AgroVision](docs/img/painel.jpg)
 
@@ -25,6 +26,8 @@ entrada automatizada de dados na Fase 3, streaming de eventos, contêineres e mo
 | Inteligência no campo | Aplica as regras de decisão da Fase 3 por talhão e dia. Mostra o nível atual de cada talhão, a ação recomendada, o histórico de decisões e gera o relatório de intervenção |
 | Entrada automatizada | Vigia a pasta de entrada, lê só os registros novos e dispara o pipeline e as regras. Mostra os arquivos, o checkpoint, os alertas e o log. Na demonstração, entrega e reenvia lotes |
 | Streaming | Eventos de sensores e folhas chegando em tempo real pelo broker Kafka. Mostra o fluxo, os alertas, os eventos rejeitados por segurança e roda uma simulação sem Docker |
+| Arquitetura e Docker | Diagrama dos contêineres, serviços, estado do broker e comandos |
+| Modelo de negócio | Business Model Canvas do AgroSmart, Canvas da Proposta de Valor, hipóteses a validar e concorrência |
 | Pipeline de dados | Mostra as três camadas de dados, permite reprocessar e exportar os resultados em CSV e JSON |
 
 ## Como rodar
@@ -119,17 +122,31 @@ python -m agrovision.streaming.produtor --ticks 32 --intervalo 1 --ataque-a-cada
 Sem Docker, a aba **Streaming** do painel tem o botão **Simular**, que roda o
 fluxo completo em memória.
 
+Para encerrar o broker: `docker compose -f streaming/broker.yml down`.
+
 ## Fase 4: contêineres
 
 Um único comando sobe o broker, o produtor, o consumidor e o painel:
 
 ```bash
-docker compose up --build
+docker compose up --build        # sobe tudo
+docker compose ps                # estado dos serviços
+docker compose down -v           # derruba e apaga os dados
 ```
 
 Painel em http://localhost:8501 (aba **Streaming**) e console do broker em
-http://localhost:8080. Serviços, decisões do Dockerfile e o que mostrar nos
-prints estão em [docs/fase4-docker.md](docs/fase4-docker.md).
+http://localhost:8080. O compose completo e o `streaming/broker.yml` usam as mesmas
+portas, então derrube um antes de subir o outro. Serviços, decisões do Dockerfile
+e o que mostrar nos prints estão em [docs/fase4-docker.md](docs/fase4-docker.md).
+
+## Fase 4: modelo de negócio
+
+O AgroSmart estruturado com o Business Model Canvas e o Canvas da Proposta de
+Valor, com as hipóteses a validar e a concorrência. O que depende do mercado
+está marcado como hipótese, sem números inventados. Fica na aba
+**Modelo de negócio** do painel.
+
+![Business Model Canvas na aba Modelo de negócio](docs/img/canvas-agrosmart.png)
 
 ## Desempenho do modelo
 
@@ -218,6 +235,7 @@ O GitHub Actions roda os dois comandos em cada push e em cada pull request.
 - [Fase 3: integração com dados (entrada automatizada)](docs/fase3-ingestao.md)
 - [Fase 4: pipeline com streaming](docs/fase4-streaming.md)
 - [Fase 4: containerização com Docker](docs/fase4-docker.md)
+- [Fase 4: roteiro do vídeo](docs/video-fase4-roteiro.md)
 - [Dicionário de dados](docs/dicionario-de-dados.md)
 - [Origem do dataset](data/README.md)
 - [Relatório técnico da Fase 1](docs/relatorio-tecnico-fase1.pdf)
@@ -226,6 +244,7 @@ O GitHub Actions roda os dois comandos em cada push e em cada pull request.
 
 - Fase 1: https://youtu.be/vDnr77sQk-g
 - Fase 2: a publicar
+- Fase 4: a publicar
 
 ## Histórico das sprints
 
