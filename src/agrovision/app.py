@@ -6,6 +6,7 @@ Rode com:
 
 import hashlib
 import io
+import json
 import shutil
 from contextlib import redirect_stdout
 from datetime import date
@@ -14,7 +15,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from agrovision import automacao, ingestao, pipeline, produtor
+from agrovision import automacao, diagramas, ingestao, pipeline, produtor
 from agrovision.decisao import LIMIAR_CRITICO, REGRAS_DE_INTERVENCAO, avaliar, situacao_atual
 from agrovision.esquema import (
     ACURACIA,
@@ -35,6 +36,7 @@ from agrovision.esquema import (
 from agrovision.exportacao import gerar_csv, gerar_json
 from agrovision.modelo import carregar as carregar_modelo
 from agrovision.modelo import prever
+from agrovision.streaming import demo as demo_streaming
 from agrovision.vision import de_bytes
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -52,7 +54,7 @@ CAIXA_POR_REGRA = {
     "R1": st.success,
 }
 
-st.set_page_config(page_title="AgroVision | Fase 3", page_icon="🌱", layout="wide")
+st.set_page_config(page_title="AgroVision | Fase 4", page_icon="🌱", layout="wide")
 
 
 @st.cache_resource
@@ -93,15 +95,16 @@ def preparar(registros: list[dict]) -> pd.DataFrame:
 
 
 st.title("🌱 AgroVision")
-st.caption("Classificacao e monitoramento de folhas de tomateiro | Fase 3")
+st.caption("Classificacao e monitoramento de folhas de tomateiro | Fase 4")
 
-aba_analise, aba_painel, aba_decisao, aba_pipeline, aba_entrada = st.tabs(
+aba_analise, aba_painel, aba_decisao, aba_pipeline, aba_entrada, aba_stream = st.tabs(
     [
         "🔬 Analise de folhas",
         "📊 Painel",
         "🧠 Inteligencia no campo",
         "🔄 Pipeline de dados",
         "📥 Entrada automatizada",
+        "📡 Streaming",
     ]
 )
 
@@ -589,3 +592,89 @@ with aba_entrada:
 
     pasta_entrada.mkdir(parents=True, exist_ok=True)
     exibir_entrada(pasta_entrada, saida_entrada, entrada_demo)
+
+
+@st.fragment(run_every=INTERVALO_MONITOR)
+def exibir_streaming(arquivo: Path) -> None:
+    """Estado gravado pelo consumidor do streaming. Atualiza sozinho."""
+    try:
+        estado = json.loads(arquivo.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        st.info("Nenhum evento recebido ainda. Inicie o consumidor e o produtor (veja o README).")
+        return
+
+    c = estado["contagem"]
+    colunas = st.columns(4)
+    colunas[0].metric("Eventos recebidos", c.get("recebidos", 0))
+    colunas[1].metric("Aceitos", c.get("aceitos", 0))
+    colunas[2].metric("Rejeitados", c.get("rejeitados", 0))
+    colunas[3].metric("Alertas", c.get("alertas", 0))
+    st.caption(f"Atualizado em {estado['atualizado_em']}")
+
+    esquerda, direita = st.columns(2)
+    with esquerda:
+        st.subheader("Umidade do solo por talhao (%)")
+        umidade = {t: v for t, v in estado["umidade_por_talhao"].items() if v is not None}
+        st.bar_chart(pd.Series(umidade, name="Umidade"), height=220)
+    with direita:
+        st.subheader("Rejeicoes por motivo")
+        if estado["motivos_rejeicao"]:
+            st.bar_chart(pd.Series(estado["motivos_rejeicao"], name="Eventos"), height=220)
+        else:
+            st.success("Nenhum evento rejeitado.")
+
+    st.subheader("Alertas")
+    for alerta in estado["alertas"][:6]:
+        caixa = st.error if alerta["nivel"] == "Crítico" else st.warning
+        caixa(f"{alerta['hora']} | {alerta['talhao']} | {alerta['regra']}: {alerta['mensagem']}")
+
+    st.subheader("Ultimos eventos aceitos")
+    st.dataframe(pd.DataFrame(estado["eventos"]), hide_index=True, use_container_width=True)
+
+    if estado["rejeicoes"]:
+        st.subheader("Ultimas rejeicoes")
+        st.dataframe(pd.DataFrame(estado["rejeicoes"]), hide_index=True, use_container_width=True)
+
+
+def rodar_simulacao(ticks: int, ataques: bool) -> None:
+    """Roda produtor e consumidor em memoria e guarda o log para exibir."""
+    registro = io.StringIO()
+    with redirect_stdout(registro):
+        consumidor = demo_streaming.executar(ticks, 8 if ataques else 0)
+    st.session_state["log_streaming"] = [
+        linha for linha in registro.getvalue().splitlines() if "[Consumidor]" in linha
+    ]
+    st.session_state["resumo_streaming"] = (dict(consumidor.contagem), dict(consumidor.motivos))
+
+
+with aba_stream:
+    st.write(
+        "Eventos de sensores e de folhas classificadas chegam continuamente. Cada evento "
+        "e assinado, validado e so entao entra no pipeline e nas regras de decisao."
+    )
+    st.graphviz_chart(diagramas.PIPELINE_STREAMING, use_container_width=True)
+
+    st.subheader("Executar a simulacao")
+    st.caption(
+        "Roda produtor e consumidor aqui mesmo, sem broker, para ver o fluxo funcionando. "
+        "Com Docker, o mesmo fluxo passa pelo Redpanda (veja a aba Arquitetura e Docker). "
+        "A execucao substitui os dados da demonstracao."
+    )
+    col_ticks, col_ataque, col_botao = st.columns([2, 2, 1])
+    ticks = col_ticks.slider("Rodadas de eventos (4 rodadas = 1 dia)", 8, 40, 32, step=4)
+    ataques = col_ataque.toggle("Injetar eventos maliciosos (replay, clone, adulteracao)", True)
+    if col_botao.button("▶ Simular", type="primary", use_container_width=True):
+        with st.spinner("Processando eventos..."):
+            rodar_simulacao(ticks, ataques)
+
+    if "resumo_streaming" in st.session_state:
+        contagem, motivos = st.session_state["resumo_streaming"]
+        st.success(
+            f"{contagem.get('aceitos', 0)} evento(s) aceito(s), "
+            f"{contagem.get('rejeitados', 0)} rejeitado(s), {contagem.get('alertas', 0)} alerta(s)."
+        )
+        with st.expander("Log do consumidor"):
+            st.code(chr(10).join(st.session_state["log_streaming"][-60:]) or "Sem eventos.")
+
+    st.divider()
+    exibir_streaming(pipeline.SAIDA / automacao.DEMONSTRACAO / "streaming_estado.json")
