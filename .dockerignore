@@ -1,0 +1,19 @@
+.git
+.github
+.venv
+.claude
+.vscode
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+*.egg-info
+
+# Nao vao para a imagem: dados de execucao, imagens de treino, testes e documentos.
+data/saida
+data/entrada
+data/dataset
+tests
+docs
+notebooks
+Fase3_Logica_Decisao

@@ -10,9 +10,10 @@ quais apresentam sinais de doença. Cada análise fica guardada com data e
 talhão. O painel mostra onde o problema está crescendo. Com isso, a aplicação
 de defensivo vai para o talhão que precisa, e não para a fazenda inteira.
 
-Projeto acadêmico AgroSmart, FIAP. Três sprints: visão computacional na Fase 1,
+Projeto acadêmico AgroSmart, FIAP. Quatro fases: visão computacional na Fase 1,
 organização e visualização dos dados na Fase 2, regras de decisão, automação e
-entrada automatizada de dados na Fase 3.
+entrada automatizada de dados na Fase 3, e streaming de eventos, contêineres e
+modelo de negócio na Fase 4.
 
 ![Painel do AgroVision](docs/img/painel.jpg)
 
@@ -24,6 +25,9 @@ entrada automatizada de dados na Fase 3.
 | Painel | Imagens analisadas, percentual de saudáveis e doentes, confiança média, contagem por talhão e evolução por dia. Filtros de período, local e classificação |
 | Inteligência no campo | Aplica as regras de decisão da Fase 3 por talhão e dia. Mostra o nível atual de cada talhão, a ação recomendada, o histórico de decisões e gera o relatório de intervenção |
 | Entrada automatizada | Vigia a pasta de entrada, lê só os registros novos e dispara o pipeline e as regras. Mostra os arquivos, o checkpoint, os alertas e o log. Na demonstração, entrega e reenvia lotes |
+| Streaming | Eventos de sensores e folhas chegando em tempo real pelo broker Kafka. Mostra o fluxo, os alertas, os eventos rejeitados por segurança e roda uma simulação sem Docker |
+| Arquitetura e Docker | Diagrama dos contêineres, serviços, estado do broker e comandos |
+| Modelo de negócio | Business Model Canvas do AgroSmart, Canvas da Proposta de Valor, hipóteses a validar e concorrência |
 | Pipeline de dados | Mostra as três camadas de dados, permite reprocessar e exportar os resultados em CSV e JSON |
 
 ## Como rodar
@@ -100,6 +104,50 @@ A justificativa, o diagrama, o dicionário de dados e o log de execução estão
 
 ![Aba Inteligência no campo](docs/img/fase3-situacao-demo.png)
 
+## Fase 4: streaming de dados
+
+Sensores de solo e câmeras enviam eventos a um broker Kafka (Redpanda). Cada
+evento é assinado, validado e só então entra no pipeline e nas regras de
+decisão. Eventos adulterados, repetidos ou de dispositivos desconhecidos vão
+para um tópico de rejeitados. O diagrama, os tópicos, os controles de segurança
+e o passo a passo estão em [docs/fase4-streaming.md](docs/fase4-streaming.md).
+
+```powershell
+docker compose -f streaming/broker.yml up -d
+python -m agrovision.streaming.transporte          # cria os tópicos
+python -m agrovision.streaming.consumidor --demo   # terminal A
+python -m agrovision.streaming.produtor --ticks 32 --intervalo 1 --ataque-a-cada 8   # terminal B
+```
+
+Sem Docker, a aba **Streaming** do painel tem o botão **Simular**, que roda o
+fluxo completo em memória.
+
+Para encerrar o broker: `docker compose -f streaming/broker.yml down`.
+
+## Fase 4: contêineres
+
+Um único comando sobe o broker, o produtor, o consumidor e o painel:
+
+```bash
+docker compose up --build        # sobe tudo
+docker compose ps                # estado dos serviços
+docker compose down -v           # derruba e apaga os dados
+```
+
+Painel em http://localhost:8501 (aba **Streaming**) e console do broker em
+http://localhost:8080. O compose completo e o `streaming/broker.yml` usam as mesmas
+portas, então derrube um antes de subir o outro. Serviços, decisões do Dockerfile
+e o que mostrar nos prints estão em [docs/fase4-docker.md](docs/fase4-docker.md).
+
+## Fase 4: modelo de negócio
+
+O AgroSmart estruturado com o Business Model Canvas e o Canvas da Proposta de
+Valor, com as hipóteses a validar e a concorrência. O que depende do mercado
+está marcado como hipótese, sem números inventados. Fica na aba
+**Modelo de negócio** do painel.
+
+![Business Model Canvas na aba Modelo de negócio](docs/img/canvas-agrosmart.png)
+
 ## Desempenho do modelo
 
 | Métrica | Valor |
@@ -128,6 +176,10 @@ resultado é sempre o mesmo.
 
 ```
 src/agrovision/      aplicativo, pipeline ETL, visão computacional, regras, automação e ingestão
+src/agrovision/streaming/  eventos, produtor, consumidor e transporte Kafka (Fase 4)
+streaming/           tópicos do broker e compose só do broker
+Dockerfile           imagem única do painel, produtor e consumidor
+docker-compose.yml   ambiente completo em contêineres
 Fase3_Logica_Decisao/  regras de decisão da Fase 3 (PDF e fluxograma)
 scripts/             treino, importação em lote, base de demonstração e produtor de lotes
 tests/               testes do pipeline, da visão, do modelo, da exportação, das regras e da ingestão
@@ -157,6 +209,9 @@ python -m agrovision.automacao --demo   # base de demonstração
 python -m agrovision.ingestao --demo    # base de demonstração (outro terminal:)
 python scripts/gerar_lotes.py --lotes 5 --intervalo 10
 
+# Streaming (Fase 4): simulação completa sem broker
+python -m agrovision.streaming.demo --ticks 32 --ataque-a-cada 8
+
 # Treinar o modelo de novo
 python scripts/treinar_modelo.py
 
@@ -178,6 +233,9 @@ O GitHub Actions roda os dois comandos em cada push e em cada pull request.
 - [Arquitetura e camadas de dados](docs/arquitetura.md)
 - [Fase 3: automação das ações](docs/fase3-automacao.md)
 - [Fase 3: integração com dados (entrada automatizada)](docs/fase3-ingestao.md)
+- [Fase 4: pipeline com streaming](docs/fase4-streaming.md)
+- [Fase 4: containerização com Docker](docs/fase4-docker.md)
+- [Fase 4: roteiro do vídeo](docs/video-fase4-roteiro.md)
 - [Dicionário de dados](docs/dicionario-de-dados.md)
 - [Origem do dataset](data/README.md)
 - [Relatório técnico da Fase 1](docs/relatorio-tecnico-fase1.pdf)
@@ -186,6 +244,7 @@ O GitHub Actions roda os dois comandos em cada push e em cada pull request.
 
 - Fase 1: https://youtu.be/vDnr77sQk-g
 - Fase 2: a publicar
+- Fase 4: a publicar
 
 ## Histórico das sprints
 

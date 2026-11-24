@@ -1,0 +1,9 @@
+{
+  "descricao": "Topicos do streaming do AgroVision. Criar com: python -m agrovision.streaming.transporte",
+  "topicos": [
+    {"nome": "agrovision.sensores",   "particoes": 3, "replicas": 1, "retencao_ms": 86400000},
+    {"nome": "agrovision.analises",   "particoes": 3, "replicas": 1, "retencao_ms": 86400000},
+    {"nome": "agrovision.alertas",    "particoes": 1, "replicas": 1, "retencao_ms": 604800000},
+    {"nome": "agrovision.rejeitados", "particoes": 1, "replicas": 1, "retencao_ms": 604800000}
+  ]
+}
