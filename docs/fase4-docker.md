@@ -84,14 +84,20 @@ continua mostrando o resultado. Para outra execução, `docker compose restart p
 - **Ordem de partida**: `depends_on` com condições. Os tópicos só são criados
   quando o broker está saudável, e produtor e consumidor só iniciam depois dos tópicos.
 
-## O que mostrar nos prints
+## Prints
 
-1. `docker compose ps` com os serviços no ar.
-2. Painel em http://localhost:8501, aba **📡 Streaming**, com as métricas, os
-   alertas e a tabela de rejeições.
-3. Aba **🐳 Arquitetura e Docker**, mostrando o broker acessível.
-4. Console do broker em http://localhost:8080, tópico `agrovision.rejeitados`.
-5. Docker Desktop, aba **Containers**, com o grupo `agrovision`.
+Estado dos serviços (`docker compose ps -a`). O `topicos` e o `produtor` terminam com
+código 0 por serem tarefas finitas, e o `redpanda` e o `dashboard` ficam saudáveis:
+
+![docker compose ps](img/fase4-docker-ps.png)
+
+Painel rodando no contêiner, aba **Arquitetura e Docker**, com o broker acessível:
+
+![Aba Arquitetura e Docker](img/fase4-docker-painel.png)
+
+Console do broker em http://localhost:8080, com os quatro tópicos criados:
+
+![Tópicos no console do broker](img/fase4-kafka-topicos.png)
 
 ## Resultado do teste
 

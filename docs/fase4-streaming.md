@@ -153,3 +153,24 @@ Com `--ticks 32 --ataque-a-cada 8` (8 dias simulados):
 - O Talhão B perde umidade e dispara o alerta S1 de irrigação.
 - Os talhões A e C ficam estáveis. Com amostras de poucas folhas por dia, o
   Talhão C pode alertar uma vez por variação da amostra.
+
+## Prints do fluxo em funcionamento
+
+Fluxo real pelo broker, com `docker compose up --build`. O produtor injeta um
+ataque a cada 8 rodadas. A aba **Streaming** mostra os eventos aceitos, os
+alertas e as rejeições por motivo:
+
+![Aba Streaming com o fluxo real](img/fase4-streaming-kafka.png)
+
+Log do consumidor, só com as linhas `REJEITADO` e `ALERTA`:
+
+![Log do consumidor](img/fase4-streaming-log-consumidor.png)
+
+Tópico `agrovision.rejeitados` no console do broker, com uma mensagem por evento
+barrado e o motivo:
+
+![Tópico de rejeitados](img/fase4-kafka-rejeitados.png)
+
+Sem broker, o botão **▶ Simular** roda o mesmo fluxo em memória:
+
+![Aba Streaming depois de Simular](img/fase4-streaming-simulacao.png)
